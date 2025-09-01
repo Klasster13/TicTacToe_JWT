@@ -1,0 +1,28 @@
+﻿@page "/about"
+
+@inject HttpClient Http
+
+<PageTitle>About</PageTitle>
+
+<div class="top-bar">
+    <a href="/" class="nav-btn" style="margin-right: 10px;">Back</a>
+    <a href=@swaggerLink class="nav-btn" target="_blank">API Docs</a>
+</div>
+
+<div class="content-wrapper" style="margin-top:20px;">
+    <h3>Made by Kristieh</h3>
+    <p>kristieh@student.21-school.com</p>
+    <a href="https://t.me/klasster13" class="nav-btn">Telegram</a>
+</div>
+
+@code {
+    private string swaggerLink = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        if (Http.BaseAddress is not null)
+        {
+            swaggerLink = $"{Http.BaseAddress}swagger";
+        }
+    }
+}

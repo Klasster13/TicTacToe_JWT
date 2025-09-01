@@ -1,0 +1,51 @@
+﻿@using TicTacToe.Client.Models
+
+<div class="board-cell @GetCellClass()"
+    @onclick="@HandleClick"
+    disabled="@IsDisabled">
+    @GetCellSymbol()
+</div>
+
+@code {
+    [Parameter] public int Row { get; set; }
+    [Parameter] public int Col { get; set; }
+    [Parameter] public Cell Value { get; set; }
+    [Parameter] public bool IsDisabled { get; set; }
+    [Parameter] public ICollection<PointModel>? WinningCells { get; set; }
+    [Parameter] public EventCallback<(int row, int col)> OnClick { get; set; }
+
+
+    private async Task HandleClick()
+    {
+        if(IsDisabled) return;
+
+        await OnClick.InvokeAsync((Row, Col));
+    }
+
+
+    private string GetCellSymbol()
+    {
+        return Value switch
+        {
+            Cell.X => "✕",
+            Cell.O => "○",
+            _ => ""
+        };
+    }
+
+
+    private string GetCellClass()
+    {
+        if (WinningCells is not null && WinningCells.Any(p => p.Y == Row && p.X == Col))
+        {
+            return "cell-win";
+        }
+
+        return Value switch
+        {
+            Cell.X => "cell-x",
+            Cell.O => "cell-o",
+            _ => "cell-empty"
+        };
+    }
+}

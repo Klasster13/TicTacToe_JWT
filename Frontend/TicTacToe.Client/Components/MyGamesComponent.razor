@@ -1,0 +1,278 @@
+﻿@using Microsoft.AspNetCore.Components.QuickGrid
+@using TicTacToe.Client.Handlers
+@using TicTacToe.Client.Models
+
+@inject HttpClient Http
+@inject ILocalStorageService LocalStorage
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject RefreshDataService RefreshData
+
+@implements IDisposable
+
+<div class="content-wrapper">
+    <h3>My games</h3>
+
+    <div class="gradient-divider"></div>
+
+    @if (myGames is null)
+    {
+        <p>Loading games...</p>
+    }
+    else if (!myGames.Any())
+    {
+        <p>There are no games</p>
+        <p>Try create new...</p>
+    }
+    else
+    {
+        <div>
+            <QuickGrid class="table" Items="@myGames.AsQueryable()" Pagination="@pagination" >
+                <PropertyColumn Title="Mode" 
+                    Property="@(s => (s.Mode == Mode.TwoPlayers ? "👥" : "👤"))"
+                    Class="emoji-cell" 
+                    Sortable="true"
+                    Align="Align.Center"/>
+
+                <TemplateColumn Title="Field" Class="view-field-column" Align="Align.Center">
+                    <HoverGamePopup GameField="@context.Field" WinningCells="@context.WinningCells">
+                        <ChildContent>
+                            <span class="field-cell">👀</span>
+                        </ChildContent>
+                    </HoverGamePopup>
+                </TemplateColumn>
+
+                <PropertyColumn Title="Player 1" 
+                    Property="@(s => PlayerIdHandler(s.Player1Id, s.Mode))"
+                    Class="emoji-cell"
+                    Sortable="true"
+                    Align="Align.Center"/>
+
+                <PropertyColumn Title="Player 2" 
+                    Property="@(s => PlayerIdHandler(s.Player2Id, s.Mode))" 
+                    Class="emoji-cell" 
+                    Sortable="true"
+                    Align="Align.Center"/>
+
+                <PropertyColumn Title="State"
+                    Property="@(s => StateHandler(s.State))"
+                    Class="emoji-cell" 
+                    Sortable="true" 
+                    Align="Align.Center" />
+                
+                <TemplateColumn>
+                    <a class="nav-btn"
+                        @onclick="() => ContinueHandler(context.Id)">
+                        Continue
+                    </a>
+                </TemplateColumn>
+
+                @if (myGames.Any(s => IsCopyIdAllowed(s))) {
+                    <TemplateColumn>
+                        @if (IsCopyIdAllowed(context))
+                        {
+                            <a class="nav-btn"
+                                @onclick="async () => await CopyIdHandler(context.Id.ToString())">
+                                Copy ID
+                            </a>
+                        }
+                    </TemplateColumn>
+                }
+
+                @if(myGames.Any(s => s.CreatorId == UserId)) {
+                    <TemplateColumn>
+                        @if (context.CreatorId == UserId)
+                        {
+                            <a class="nav-btn"
+                                @onclick="() => ChangeModeHandler(context.Id, context.Mode)">
+                                Change mode
+                            </a>
+                        }
+                    </TemplateColumn>
+                }
+
+                @if (myGames.Any(s => s.CreatorId == UserId)) {
+                    <TemplateColumn>
+                        @if (context.CreatorId == UserId)
+                        {
+                            <a class="nav-btn"
+                                @onclick="() => DeleteHandler(context.Id)">
+                                Delete
+                            </a>
+                        }
+                    </TemplateColumn>
+                }
+            </QuickGrid>
+            <Paginator State="@pagination" />
+        </div> 
+    }
+
+    <ErrorMessageComponent  @bind-ErrorMessage="errorMessage" />
+</div>
+
+
+@code {
+    [Parameter] public EventCallback<SessionResponse> OnGameReady { get; set; }
+    [Parameter] public Guid UserId { get; set; }
+
+    private IEnumerable<SessionResponse>? myGames;
+    private string? errorMessage;
+    private PaginationState pagination = new PaginationState { ItemsPerPage = 10 };
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await LocalStorage.ContainKeyAsync("authToken"))
+        {
+            Navigation.NavigateTo("/");
+            return;
+        }    
+
+        try
+        {
+            await GetMyGames();
+            RefreshData.OnRefreshDataAsync += GetMyGames;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private bool IsCopyIdAllowed(SessionResponse session)
+    {
+        return session.Mode == Mode.TwoPlayers
+            && (session.Player1Id is null || session.Player2Id is null);
+    }
+
+    private async Task GetMyGames()
+    {
+        myGames = await Http.GetFromJsonAsync<IEnumerable<SessionResponse>>("/game/my-games");
+        if (myGames is not null)
+        {
+            int count = myGames.Count();
+            pagination.ItemsPerPage = count < pagination.ItemsPerPage ? count : pagination.ItemsPerPage;
+        }
+    }
+
+
+    private string PlayerIdHandler(Guid? playerId, Mode mode)
+    {        
+        if (mode == Mode.TwoPlayers)
+        {
+            return playerId is null ? "❓" : "✔️";
+        }
+        else
+        {
+            return playerId is null ? "🤖" : "✔️";
+        }
+    }
+
+
+    private string StateHandler(State state)
+    {
+        return state switch
+        {
+            State.WaitingForPlayers => "𝖩𝗈𝗂𝗇 ➥🎮",
+            State.Player1Turn => "1️🎮",
+            State.Player2Turn => "2️🎮",
+            State.Player1Winner => "1️🏆",
+            State.Player2Winner => "2️🏆",
+            State.Draw => "1️🤝2️",
+            _ => "❓❓❓"
+        };
+    }
+
+    private async void ChangeModeHandler(Guid id, Mode oldMode)
+    {
+        var request = new UpdateModeRequest()
+            {
+                Mode = oldMode == Mode.OnePlayer
+                    ? Mode.TwoPlayers
+                    : Mode.OnePlayer
+            };
+        try
+        {
+            var response = await Http.PutAsJsonAsync($"/game/{id}/mode", request);
+            if (response.IsSuccessStatusCode)
+            {
+                await GetMyGames();
+            }
+            else
+            {
+                errorMessage = await response.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+
+    private async Task DeleteHandler(Guid id)
+    {
+        try
+        {
+            var response = await Http.DeleteAsync($"/game/{id}");
+            if (response.IsSuccessStatusCode)
+            {
+                await GetMyGames();
+            }
+            else
+            {
+                errorMessage = await response.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+
+    private async Task ContinueHandler(Guid id)
+    {
+        try
+        {
+            var response = await Http.GetAsync($"/game/{id}");
+            if (response.IsSuccessStatusCode)
+            {
+                var session = await response.Content.ReadFromJsonAsync<SessionResponse>();
+                if (session is not null)
+                {
+                    await OnGameReady.InvokeAsync(session);
+                }
+            }
+            else
+            {
+                errorMessage = await response.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+
+    private async Task CopyIdHandler(string sessionId) => await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", sessionId);     
+    
+    
+    public void Dispose()
+    {
+        RefreshData.OnRefreshDataAsync -= GetMyGames;
+    }
+}

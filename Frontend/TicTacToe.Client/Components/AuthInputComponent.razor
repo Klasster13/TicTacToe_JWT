@@ -1,0 +1,102 @@
+﻿@namespace TicTacToe.Client.Components
+
+@using System.Text
+@using System.Net.Http.Headers
+
+@inject HttpClient Http
+@inject ILocalStorageService LocalStorage
+@inject NavigationManager Navigation
+
+<div class="content-wrapper">
+    <h5>@(IsSignIn ? "Sign In" : "Sign Un")</h5>
+
+    <div class="auth-form">
+        <input type="text"
+        @bind="model.Login"
+        @bind:event="oninput"
+        placeholder="Login"
+        class="form-input" />
+
+        <input type="text"
+        @bind="model.Password"
+        @bind:event="oninput"
+        placeholder="Password"
+        class="form-input" />
+        @* <PasswordInput @bind-Value="model.Password" /> *@
+    </div>
+
+    <button class="main-btn"
+            @onclick="@(IsSignIn ? SignInHandler : SignUpHandler)"
+    disabled="@(!IsValid)"
+    style="margin-top: 10px;">
+        @(IsSignIn ? "Sign In" : "Sign Un")
+    </button>
+        
+    <ErrorMessageComponent @bind-ErrorMessage="@errorMessage" />
+    
+</div>
+
+
+@code {
+    private AuthRequest model = new();
+    private string? errorMessage;
+
+    [Parameter] public bool IsSignIn { get; set; } = true;
+
+    private bool IsValid => !string.IsNullOrWhiteSpace(model.Login)
+        && !string.IsNullOrWhiteSpace(model.Password)
+        && model.Login.Length >= 3
+        && model.Password.Length >= 6;
+
+
+
+    private async Task SignInHandler()
+    {
+        var token = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{model.Login}:{model.Password}"));
+
+        try
+        {         
+            await LocalStorage.SetItemAsync("authToken", token);
+
+            var response = await Http.GetAsync("/auth/authorization");            
+
+            if (response.IsSuccessStatusCode)
+            {
+                var userId = await response.Content.ReadFromJsonAsync<Guid>();
+                Navigation.NavigateTo($"/user/{userId}");
+            }
+            else
+            {
+                await LocalStorage.RemoveItemAsync("authToken");
+                errorMessage = "Invalid login or password";
+            }
+        }
+        catch (Exception ex)
+        {
+            await LocalStorage.RemoveItemAsync("authToken");
+            errorMessage = ex.Message;
+        }
+    }
+
+
+    private async Task SignUpHandler()
+    {
+        try
+        {
+            var response = await Http.PostAsJsonAsync("/auth/registration", model);
+
+            if (response.IsSuccessStatusCode)
+            {
+                await SignInHandler();
+            }
+            else
+            {
+                errorMessage = await response.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+}

@@ -1,0 +1,69 @@
+﻿@using TicTacToe.Client.Models
+
+<div class="hover-wrapper"
+     @onmouseenter="Show"
+     @onmouseleave="Hide">
+
+    <!-- Иконка, при наведении на которую появляется поле -->
+    @ChildContent
+
+    <!-- Всплывающее окно с полем -->
+    @if (isVisible && GameField != null)
+    {
+        <div class="game-popup @positionClass">
+            <div class="tic-tac-toe-field">
+                @for (int i = 0; i < GameField.Board.Count; i++)
+                {
+                    <div class="row">
+                        @for (int j = 0; j < GameField.Board[i].Count; j++)
+                        {                            
+                            <div class="cell @GetCellClass(i, j)">
+                                @GetCellSymbol(GameField.Board[i][j])
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public RenderFragment ChildContent { get; set; } = null!;
+    [Parameter] public FieldModel? GameField { get; set; }
+    [Parameter] public IEnumerable<PointModel>? WinningCells { get; set; }
+    [Parameter] public string Position { get; set; } = "right";
+
+    private bool isVisible;
+    private string positionClass => $"popup-{Position}";
+
+    private void Show() => isVisible = true;
+    private void Hide() => isVisible = false;
+
+
+    private string GetCellClass(int y, int x)
+    {
+        if (WinningCells != null && WinningCells.Any(p => p.Y == y  && p.X == x))
+        {
+            return "cell-win";
+        }
+        
+        return GameField!.Board[y][x] switch
+        {
+            Cell.X => "cell-x",
+            Cell.O => "cell-o",
+            _ => "cell-empty"
+        };
+    }
+
+
+    private string GetCellSymbol(Cell cell)
+    {
+        return cell switch
+        {
+            Cell.X => "✕",
+            Cell.O => "○",
+            _ => ""
+        };
+    }
+}

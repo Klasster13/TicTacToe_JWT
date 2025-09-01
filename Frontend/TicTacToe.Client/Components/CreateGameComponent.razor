@@ -1,0 +1,117 @@
+﻿@inject HttpClient Http
+@inject ILocalStorageService LocalStorage
+@inject NavigationManager Navigation
+
+<div class="content-wrapper">
+    <h3>Create Game</h3>
+
+    <div class="gradient-divider"></div>
+
+    <h5>Choose game mode</h5>
+
+    <div class="options-container">
+        <div class="difficulty-row">
+            <label class="option-card @(difficulty == Difficulty.Easy && mode == Mode.OnePlayer ? "selected" : "")" @onclick="() => DifficultyHandler(Difficulty.Easy)">
+                <div class="option-icon">😊</div>
+                <div class="option-title">Easy</div>
+            </label>
+
+            <label class="option-card @(difficulty == Difficulty.Medium && mode == Mode.OnePlayer ? "selected" : "")" @onclick="() => DifficultyHandler(Difficulty.Medium)">
+                <div class="option-icon">😐</div>
+                <div class="option-title">Medium</div>
+            </label>
+
+            <label class="option-card @(difficulty == Difficulty.Hard && mode == Mode.OnePlayer ? "selected" : "")" @onclick="() => DifficultyHandler(Difficulty.Hard)">
+                <div class="option-icon">😠</div>
+                <div class="option-title">Hard</div>
+            </label>
+        </div>
+
+        <div class="players-row">
+            <label class="option-card @(mode == Mode.TwoPlayers ? "selected" : "")" @onclick="() => ModeHandler(Mode.TwoPlayers)">
+                <div class="option-icon">👥</div>
+                <div class="option-title">2 players</div>
+            </label>
+        </div>
+    </div>
+
+    <h5>Choose side</h5>
+    <div class="player-selection">
+        <div>
+            <label class="@(playerSide == Player.Player1 ? "selected-role" : "")" @onclick="() => PlayerSideHandler(Player.Player1)">
+                X
+            </label>
+            <label class="@(playerSide == Player.Player2 ? "selected-role" : "")" @onclick="() => PlayerSideHandler(Player.Player2)">
+                O
+            </label>
+        </div>
+    </div>
+
+    <div class="gradient-divider"></div>
+
+    <button class="main-btn" @onclick="CreateGame">
+        Create game
+    </button>
+
+    <ErrorMessageComponent @bind-ErrorMessage="@errorMessage" />
+</div>
+
+
+@code {
+    private Difficulty difficulty = Difficulty.Medium;
+    private Player playerSide = Player.Player1;
+    private Mode mode = Mode.OnePlayer;
+    private string? errorMessage;
+
+    [Parameter] public EventCallback<SessionResponse> OnGameReady { get; set; }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await LocalStorage.ContainKeyAsync("authToken"))
+        {
+            Navigation.NavigateTo("/");
+        }
+    }
+
+    private void DifficultyHandler(Difficulty newDifficulty)
+    {
+        difficulty = newDifficulty;
+        mode = Mode.OnePlayer;
+    }
+
+    private void ModeHandler(Mode newMode) => mode = newMode;
+    private void PlayerSideHandler(Player side) => playerSide = side;
+
+    private async Task CreateGame()
+    {
+        var request = new CreateSessionRequest()
+            {
+                Mode = mode,
+                StartSide = playerSide,
+                Difficulty = difficulty
+            };
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("/game/create", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var session = await response.Content.ReadFromJsonAsync<SessionResponse>();
+                if (session is not null )
+                {
+                    await OnGameReady.InvokeAsync(session);
+                }
+            }
+            else
+            {
+                errorMessage = await response.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+}

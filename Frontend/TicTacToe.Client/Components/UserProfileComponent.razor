@@ -1,0 +1,79 @@
+﻿@using TicTacToe.Client.Handlers
+
+@inject HttpClient Http
+@inject UserDataUpdateService UserUpdate
+
+@implements IDisposable
+
+<div class="profile-card">
+    <div class="profile-avatar">
+        <img src="@avatarUrl" alt="Аватар" class="avatar-img" />
+    </div>
+
+    <div class="profile-info">
+        <h3>@(user?.Login ?? "Player")</h3>
+
+        <button class="main-btn edit-btn"
+        @onclick="() => OnTabButtonClick.InvokeAsync(GameTab.EditProfile)">
+        Edit profile
+    </button>
+    </div>
+
+    <ErrorMessageComponent @bind-ErrorMessage="@errorMessage" />
+    
+    <div class="gradient-divider"></div>
+
+    <div class="action-buttons">
+        <button class="main-btn action-btn" 
+            @onclick="() => OnTabButtonClick.InvokeAsync(GameTab.CreateGame)">
+            Create game
+        </button>
+
+        <button class="main-btn action-btn" 
+            @onclick="() => OnTabButtonClick.InvokeAsync(GameTab.JoinGame)">
+            Join game
+        </button>
+
+        <button class="main-btn action-btn"
+            @onclick="() => OnTabButtonClick.InvokeAsync(GameTab.MyGames)">
+            My games
+        </button>
+    </div>
+</div>
+
+
+@code {
+    [Parameter]
+    public Guid UserId { get; set; }
+
+    [Parameter]
+    public EventCallback<GameTab> OnTabButtonClick { get; set; }
+
+    private UserResponse? user;    
+    private string avatarUrl = "noavatar.png";
+    private string? errorMessage;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            UserUpdate.OnUserUpdate += UpdateData;
+            user = await Http.GetFromJsonAsync<UserResponse>($"/user/{UserId}");
+        }
+        catch (Exception ex) {
+            errorMessage = ex.Message;
+        }
+    }    
+
+    private void UpdateData(UserResponse user)
+    {
+        this.user = user;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        UserUpdate.OnUserUpdate -= UpdateData;
+    }
+}

@@ -1,0 +1,47 @@
+volumes:
+  game_data:
+
+services:
+  game_db:
+    image: postgres:latest
+    container_name: game_db
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - game_data:/var/lib/postgresql/data    
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-kristieh}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+
+  game_backend:
+    build: Backend/
+    container_name: game_backend
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENV:-Development}
+      ConnectionStrings__DefaultConnection: "Host=game_db;Port=5432;Database=${DB_NAME:-game_db};Username=${DB_USER:-kristieh};Password=${DB_PASSWORD:-12345}"
+    depends_on:
+      game_db:
+        condition: service_healthy
+    ports:
+      - "6543:6543"
+
+
+  game_frontend:
+      build:
+        context: ./Frontend
+        args:
+            API_URL: ${API_URL:-http://localhost:6543}
+      container_name: game_frontend
+      ports:
+        - "7654:7654"
+      environment:
+        ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENV:-Development}
+      depends_on:
+        - game_backend

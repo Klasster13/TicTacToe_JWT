@@ -1,0 +1,275 @@
+﻿@using Microsoft.AspNetCore.SignalR.Client
+@using TicTacToe.Client.Handlers
+
+@inject HttpClient Http
+@inject ILocalStorageService LocalStorage
+@inject NavigationManager Navigation
+@inject GameHubService GameHub
+
+@implements IAsyncDisposable
+
+<div class="content-wrapper">
+    <h3 class="game-status">@status</h3>
+
+    <div class="gradient-divider"></div>
+
+    <div class="tic-tac-toe-board">
+        @for (int row = 0; row < 3; row++)
+        {
+            <div class="board-row">
+                @for (int col = 0; col < 3; col++)
+                {
+                    <CellComponent
+                        Row = "@row" 
+                        Col = "@col"
+                        Value="@Session.Field.Board[row][col]"
+                        IsDisabled="@IsDisabled(row, col)"
+                        WinningCells="@Session.WinningCells"
+                        OnClick="ClickHandle" />
+                }
+            </div>
+        }
+    </div>
+
+    <div class="gradient-divider"></div>
+
+    <button class="main-btn" @onclick="() => OnBackClick.InvokeAsync()">
+        Back
+    </button>
+
+    <ErrorMessageComponent @bind-ErrorMessage="@errorMessage" />
+</div>
+
+
+@code {
+    [Parameter] public SessionResponse Session { get; set; } = null!;
+    [Parameter] public Guid UserId { get; set; }
+    [Parameter] public EventCallback OnBackClick { get; set; }
+
+    private int delayForAiMove = 300;
+    private string status = string.Empty;
+    private bool isMoveInProgress = false;
+    private string? errorMessage;
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        UpdateStatus();        
+
+        if (Session.Mode == Mode.TwoPlayers) {
+            GameHub.OnUpdateRecieved += UpdateSession;
+            await GameHub.ConnectAsync(Session.Id);
+        }
+        else
+        {            
+            await MakeMoveIfAiFirst();
+        }
+    }
+
+
+    private async Task ClickHandle((int row, int col) position)
+    {
+        switch (Session.State)
+        {
+            case State.Player1Turn:
+            case State.Player2Turn:
+                await MakeMove(position);
+                break;
+            case State.Player1Winner:
+            case State.Player2Winner:
+            case State.Draw:
+                await ResetGame();
+                break;
+            default:
+                return;
+        };
+    }
+
+
+    private async Task MakeMove((int row, int col) position)
+    {
+        if (!IsUserTurn(UserId)) return;
+
+        isMoveInProgress = true;
+        var moveRequest = new MoveRequests { Field = Session.Field.Board };
+
+        moveRequest.Field[position.row][position.col] = Session.State == State.Player1Turn
+            ? Cell.X
+            : Cell.O;
+
+        try
+        {
+            var response = await Http.PutAsJsonAsync($"/game/{Session.Id}/move", moveRequest);
+
+            if (response.IsSuccessStatusCode)
+            {
+                await DelayForAiMove();                
+
+                var responseSession = await response.Content.ReadFromJsonAsync<SessionResponse>();
+                if (responseSession is not null)
+                {
+                    Session = responseSession;
+                    UpdateStatus();
+                }
+            }
+            else
+            {
+                errorMessage = await response.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex) 
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            StateHasChanged();
+            isMoveInProgress = false;
+        }
+    }
+
+
+    private async Task MakeMoveIfAiFirst()
+    {
+        if (Session.Mode == Mode.TwoPlayers || Session.Player2Id is null)
+        {
+            return;
+        }
+
+        isMoveInProgress = true;
+        var moveRequest = new MoveRequests { Field = Session.Field.Board };
+
+        try
+        {
+            var response = await Http.PutAsJsonAsync($"/game/{Session.Id}/move", moveRequest);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var responseSession = await response.Content.ReadFromJsonAsync<SessionResponse>();
+                if (responseSession is not null)
+                {
+                    Session = responseSession;
+                    UpdateStatus();
+                }
+            }
+            else
+            {
+                errorMessage = await response.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            StateHasChanged();
+            isMoveInProgress = false;
+        }
+    }
+
+
+    private void UpdateStatus()
+    {
+        status = Session.State switch
+        {
+            State.Player1Turn => "Player X turn",
+            State.Player2Turn => "Player O turn",
+            State.Player1Winner => "Player X won",
+            State.Player2Winner => "Player O won",
+            State.Draw => "Draw",
+            _ => "Waiting for players"
+        };
+    }
+
+
+    private async Task DelayForAiMove()
+    {
+        if (delayForAiMove > 0 && Session.Mode == Mode.OnePlayer)
+        {
+            Session.State = Session.State == State.Player1Turn
+                ? State.Player2Turn
+                : State.Player1Turn;
+
+            UpdateStatus();
+            StateHasChanged();
+            await Task.Delay(delayForAiMove);
+        }
+    }
+
+
+    private bool IsUserTurn(Guid userId)
+    {
+        return Session.State switch
+        {
+            State.Player1Turn when userId == Session.Player1Id => true,
+            State.Player2Turn when userId == Session.Player2Id => true,
+            _ => false
+        };
+    }
+
+
+    private bool IsDisabled(int row, int col)
+    {
+        if (Session.State == State.Draw
+            || Session.State == State.Player1Winner
+            || Session.State == State.Player2Winner)
+        {
+            return false;
+        }
+
+        return Session.Field.Board[row][col] != Cell.None
+                || isMoveInProgress
+                || !IsUserTurn(UserId);
+    }
+
+
+    private async Task ResetGame()
+    {
+        try
+        {            
+            var response = await Http.GetAsync($"/game/{Session.Id}/reset");
+            if (response.IsSuccessStatusCode)
+            {
+                await DelayForAiMove();
+
+                var responseSession = await response.Content.ReadFromJsonAsync<SessionResponse>();
+                if (responseSession is not null)
+                {
+                    Session = responseSession;
+                    UpdateStatus();
+                    await MakeMoveIfAiFirst();
+                }
+            }
+            else
+            {
+                errorMessage = await response.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (GameHub.IsConnected)
+        {
+            GameHub.OnUpdateRecieved -= UpdateSession;
+            await GameHub.DisconnectAsync();
+        }
+    }
+
+    public void UpdateSession(SessionResponse response)
+    {
+        Session = response;
+        UpdateStatus();
+        StateHasChanged();
+    }
+}

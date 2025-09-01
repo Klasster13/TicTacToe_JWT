@@ -1,0 +1,25 @@
+﻿@if (ErrorMessage is not null)
+{
+    <div class="alert alert-danger mt-3">@ErrorMessage</div>
+}
+
+@code {
+    [Parameter] public string? ErrorMessage { get; set; }
+    [Parameter] public int ShowTime { get; set; } = 2000;
+    [Parameter] public EventCallback<string?> ErrorMessageChanged { get; set; }
+
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(ErrorMessage))
+        {
+            await Task.Delay(2000);
+            await Dismiss();
+        }
+    } 
+
+    private async Task Dismiss()
+    {
+        await ErrorMessageChanged.InvokeAsync(null);
+    }
+}

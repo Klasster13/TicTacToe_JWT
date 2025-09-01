@@ -1,0 +1,211 @@
+﻿@using Microsoft.AspNetCore.Components.QuickGrid
+@using TicTacToe.Client.Handlers
+
+@inject HttpClient Http
+@inject ILocalStorageService LocalStorage
+@inject NavigationManager Navigation
+@inject RefreshDataService RefreshData
+
+@implements IDisposable
+
+<div class="content-wrapper">
+    <h3>Join game</h3>
+
+    <div class="gradient-divider"></div>
+
+    <div class="content-wrapper">
+        <h5>Enter game ID</h5>
+
+        <input type="text"
+                @bind="gameIdInput"
+                @bind:event="oninput"
+                placeholder="Game ID (format: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX)"
+                class="form-input" />
+
+        <button class="main-btn"
+                style="margin-top: 20px;"
+                disabled="@(!ValidateGuid())"
+                @onclick="() => JoinHandler(gameId)">
+            Join
+        </button>
+    </div>
+
+    <div class="gradient-divider"></div>
+
+    @if (availableGames is null)
+    {
+        <p>Loading games...</p>
+    }
+    else if (!availableGames.Any())
+    {
+        <p>There are no games</p>
+        <p>Try create new...</p>
+    }
+    else
+    {
+        <div>
+            <QuickGrid class="table" Items="@availableGames.AsQueryable()" Pagination="@pagination">
+                <TemplateColumn Title="Field" Class="view-field-column" Align="Align.Center">
+                    <HoverGamePopup GameField="@context.Field">
+                        <ChildContent>
+                            <span class="field-cell">👀</span>
+                        </ChildContent>
+                    </HoverGamePopup>
+                </TemplateColumn>
+
+                <PropertyColumn Title="Player 1"
+                                Property="@(s => PlayerIdHandler(s.Player1Id, s.Mode))"
+                                Class="emoji-cell"
+                                Sortable="true"
+                                Align="Align.Center" />
+
+                <PropertyColumn Title="Player 2"
+                                Property="@(s => PlayerIdHandler(s.Player2Id, s.Mode))"
+                                Class="emoji-cell"
+                                Sortable="true"
+                                Align="Align.Center" />
+
+                <PropertyColumn Title="State"
+                                Property="@(s => StateHandler(s.State))"
+                                Class="emoji-cell"
+                                Sortable="true"
+                                Align="Align.Center" />
+
+                <TemplateColumn>
+                    <a class="nav-btn"
+                       @onclick="() => JoinHandler(context.Id)">
+                        Join
+                    </a>
+                </TemplateColumn>
+            </QuickGrid>
+            <Paginator State="@pagination" />
+        </div>
+    }
+
+    <ErrorMessageComponent @bind-ErrorMessage="errorMessage" />
+</div>
+
+@code {
+    [Parameter] public EventCallback<SessionResponse> OnGameReady { get; set; }
+
+    private string gameIdInput = string.Empty;
+    private Guid gameId;
+    private IEnumerable<SessionResponse>? availableGames;
+    private string? errorMessage;
+    private PaginationState pagination = new PaginationState { ItemsPerPage = 10 };
+
+
+    private string PlayerIdHandler(Guid? playerId, Mode mode)
+    {
+        if (mode == Mode.TwoPlayers)
+        {
+            return playerId is null ? "❓" : "✔️";
+        }
+        else
+        {
+            return playerId is null ? "🤖" : "✔️";
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await LocalStorage.ContainKeyAsync("authToken"))
+        {
+            Navigation.NavigateTo("/");
+            return;
+        }
+
+        try
+        {
+            await GetAvailableGames();
+            RefreshData.OnRefreshDataAsync += GetAvailableGames;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private void OnInputChanged(ChangeEventArgs e)
+    {
+        gameIdInput = e.Value?.ToString() ?? "";
+        ValidateGuid();
+    }
+
+    private bool ValidateGuid()
+    {
+        if (string.IsNullOrWhiteSpace(gameIdInput))
+        {
+            return false;
+        }
+
+        if (!Guid.TryParse(gameIdInput, out gameId))
+        {
+            errorMessage = "Please enter a valid Game ID format";
+            return false;
+        }
+        return true;
+    }
+
+
+    private async Task GetAvailableGames()
+    {
+        availableGames = await Http.GetFromJsonAsync<IEnumerable<SessionResponse>>("/game/available");
+        if (availableGames is not null)
+        {
+            int count = availableGames.Count();
+            pagination.ItemsPerPage = count < pagination.ItemsPerPage ? count : pagination.ItemsPerPage;
+        }
+    }
+
+
+    private string StateHandler(State state)
+    {
+        return state switch
+        {
+            State.WaitingForPlayers => "𝖩𝗈𝗂𝗇 ➥🎮",
+            State.Player1Turn => "1️🎮",
+            State.Player2Turn => "2️🎮",
+            State.Player1Winner => "1️🏆",
+            State.Player2Winner => "2️🏆",
+            State.Draw => "1️🤝2️",
+            _ => "❓❓❓"
+        };
+    }
+
+
+    private async Task JoinHandler(Guid gameId)
+    {
+        try
+        {
+            var response = await Http.GetAsync($"/game/{gameId}/join");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var session = await response.Content.ReadFromJsonAsync<SessionResponse>();
+                if (session is not null)
+                {
+                    await OnGameReady.InvokeAsync(session);
+                }
+            }
+            else
+            {
+                errorMessage = await response.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+
+    public void Dispose()
+    {
+        RefreshData.OnRefreshDataAsync -= GetAvailableGames;
+    }
+}

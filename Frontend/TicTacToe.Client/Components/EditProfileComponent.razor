@@ -1,0 +1,175 @@
+﻿@using System.Text
+@using System.Net.Http.Headers
+@using TicTacToe.Client.Handlers
+
+@inject HttpClient Http
+@inject ILocalStorageService LocalStorage
+@inject NavigationManager Navigation
+@inject UserDataUpdateService UserUpdate
+
+<div class="content-wrapper">
+    <h3>Edit profile</h3>
+
+    <div class="content-wrapper">
+        <div class="gradient-divider"></div>
+
+        <h5>Update login</h5>
+        <span style="font-weight:400;">Must be 3-50 symbols</span>
+
+        <input type="text"
+                style="margin-top: 10px;"
+                @bind="newLogin"
+                @bind:event="oninput"
+                placeholder="New login"
+                class="form-input" />
+
+        <div class="gradient-divider"></div>
+
+        <h5>Update password</h5>
+        <span style="font-weight:400;">Must be 6-100 symbols</span>
+
+        <input type="text"
+                style="margin-top: 10px;"
+                @bind="newPassword"
+                @bind:event="oninput"
+                placeholder="New password"
+                class="form-input" />
+    
+        <input type="text"
+                style="margin-top: 10px;"
+                @bind="confirmedPassword"
+                @bind:event="oninput"
+                placeholder="Confirm password"
+                class="form-input" />
+
+        <div class="gradient-divider"></div>
+        <h5>Enter current password</h5>
+
+        <input type="text"
+                @bind="currentPassword"
+                @bind:event="oninput"
+                placeholder="Current password"
+                class="form-input" />
+
+        <div class="gradient-divider"></div>
+
+        <button class="main-btn"
+                disabled="@(!IsValidData())"
+                @onclick="() => UpdateUser()">
+            Save
+        </button>
+    </div>
+
+    <ErrorMessageComponent @bind-ErrorMessage="errorMessage" />
+</div>
+
+
+@code {
+    [Parameter] public Guid UserId { get; set; }
+    [Parameter] public string Login { get; set; } = string.Empty;
+
+    private string newLogin = string.Empty;
+    private string currentPassword = string.Empty;
+    private string newPassword = string.Empty;
+    private string confirmedPassword = string.Empty;
+    private string? errorMessage;
+
+
+    private bool IsValidNewLogin => !string.IsNullOrWhiteSpace(newLogin);
+
+
+    private bool IsValidData()
+    {
+        if (newLogin != string.Empty && newLogin.Length < 3) return false;
+
+        if ((!string.IsNullOrWhiteSpace(newPassword) && newPassword.Length < 6)
+            || (!string.IsNullOrWhiteSpace(confirmedPassword) && confirmedPassword.Length < 6))
+            return false;
+
+        if (newPassword != confirmedPassword)
+        {
+            errorMessage = "Password are not equal";
+            return false;
+        }
+
+        if (newPassword == currentPassword
+            && !string.IsNullOrWhiteSpace(newPassword)
+            && !string.IsNullOrWhiteSpace(currentPassword))
+        {
+            errorMessage = "Password should not match to old one";
+            return false;
+        }
+
+        if (currentPassword.Length < 6)
+        {
+            if (!string.IsNullOrWhiteSpace(currentPassword))
+            {
+                errorMessage = "Invalid current password";
+            }
+            return false;
+        }
+
+        return true;
+    }
+
+
+    private async Task UpdateUser()
+    {
+        try
+        {
+            var user = await Http.GetFromJsonAsync<UserResponse>($"/user/{UserId}");
+            if( user is  null )
+            {
+                errorMessage = "User not found";
+                return;
+            }
+
+            var token = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{user.Login}:{currentPassword}"));
+                        
+            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", token);
+            var response = await Http.GetAsync("/auth/authorization");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var request = new UpdateUserRequest
+                    {
+                        Login = newLogin,
+                        Password = newPassword
+                    };
+                response = await Http.PutAsJsonAsync("/user/update", request);
+                if (response.IsSuccessStatusCode)
+                {
+                    var updatedUser = await response.Content.ReadFromJsonAsync<UserResponse>();
+                    if (updatedUser is not null)
+                    {
+                        token = Convert.ToBase64String(
+                            Encoding.UTF8.GetBytes(
+                                $"{updatedUser.Login}:{(newPassword == string.Empty ? currentPassword: newPassword)}"
+                            )
+                        );
+
+                        await LocalStorage.RemoveItemAsync("authToken");
+                        await LocalStorage.SetItemAsync("authToken", token);
+                        UserUpdate.UserDataChanged(updatedUser);
+                    }
+                }
+                else
+                {
+                    errorMessage = await response.Content.ReadAsStringAsync();                    
+                }
+            }
+            else
+            {
+                errorMessage = await response.Content.ReadAsStringAsync();
+            }
+
+        }catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+}

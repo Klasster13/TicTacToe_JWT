@@ -1,0 +1,69 @@
+﻿@page "/user/{userId:guid}"
+
+@using TicTacToe.Client.Handlers
+
+@inject ILocalStorageService LocalStorage
+@inject NavigationManager Navigation
+@inject RefreshDataService RefreshData
+
+
+<div class="top-bar">    
+    <a class="nav-btn" @onclick="LogOutHandler">Log out</a>
+</div>
+
+<div class="user-page-container">
+
+    <div class="profile-sidebar">
+        <UserProfileComponent UserId="@UserId"
+            OnTabButtonClick="SwitchTabHandler" />
+    </div>
+    
+    <div class="main-content">        
+        <div class="game-content">
+            <MainContentComponent
+                CurrentTab="@currentTab"
+                UserId="@UserId"
+                OnTabChange="SwitchTabHandler"/>
+        </div>
+    </div>
+</div>
+
+
+
+@code {
+    [Parameter] public Guid UserId { get; set; }
+
+    private GameTab currentTab = GameTab.CreateGame;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await LocalStorage.ContainKeyAsync("authToken"))
+        {
+            Navigation.NavigateTo("/");
+        }
+    }
+
+
+    private async Task LogOutHandler()
+    {
+
+        await LocalStorage.RemoveItemAsync("authToken");
+        Navigation.NavigateTo("/", forceLoad: true);
+    }
+
+
+    private async Task SwitchTabHandler(GameTab tab)
+    {
+        if (currentTab == tab)
+        {
+            if (currentTab == GameTab.JoinGame || currentTab == GameTab.MyGames)
+            {
+                await RefreshData.RefreshDataAsync();
+            }
+        }
+
+        currentTab = tab;
+        StateHasChanged();
+    }
+}

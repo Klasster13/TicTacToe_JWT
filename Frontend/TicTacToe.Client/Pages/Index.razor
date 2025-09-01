@@ -1,0 +1,59 @@
+﻿@page "/"
+@rendermode RenderMode.InteractiveWebAssembly
+
+@inject HttpClient Http
+@inject ILocalStorageService LocalStorage
+@inject NavigationManager Navigation
+
+
+<PageTitle>Tic-Tac-Toe</PageTitle>
+
+<div class="top-bar">
+    <a href="/about" class="nav-btn">About</a>
+</div>
+
+<div class="content-wrapper">
+    <picture>
+        <source srcset="header-image.webp" type="image/webp">
+        <img src="header-image.jpg" alt="Welcome" class="header-image">
+    </picture>
+
+    <h1>Welcome!</h1>
+    <AuthInputComponent IsSignIn="@true"></AuthInputComponent>
+       
+
+    <div style="margin-top: 10px;">
+        <span >Don't have an account?</span>
+        <a href="/signup" class="nav-btn">Sign Up</a>
+    </div>
+</div>
+
+@code {
+
+    protected override async Task OnInitializedAsync()
+    {
+        var token = await LocalStorage.GetItemAsync<string>("authToken");
+
+        if (!string.IsNullOrEmpty(token))
+        {
+            try
+            {
+                var response = await Http.GetAsync("/auth/authorization");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var userId = await response.Content.ReadFromJsonAsync<Guid>();
+                    Navigation.NavigateTo($"/user/{userId}");
+                }
+                else
+                {
+                    await LocalStorage.RemoveItemAsync("authToken");
+                }
+            }
+            catch (Exception)
+            {
+                await LocalStorage.RemoveItemAsync("authToken");
+            }
+        }
+    }
+}

@@ -1,0 +1,57 @@
+﻿@using TicTacToe.Client.Handlers
+
+<div class="main-menu">
+    @if (CurrentTab == GameTab.CreateGame)
+    {
+        <CreateGameComponent OnGameReady="ShowGameHandler" />
+    }
+    else if (CurrentTab == GameTab.MyGames)
+    {
+        <MyGamesComponent OnGameReady="ShowGameHandler" UserId="@UserId" />
+    }
+    else if (CurrentTab == GameTab.JoinGame)
+    {
+        <JoinGameComponent OnGameReady="ShowGameHandler"/>
+    }
+    else if (CurrentTab == GameTab.EditProfile)
+    {
+        <EditProfileComponent UserId="@UserId" />
+    }
+    else if (CurrentTab == GameTab.Game)
+    {
+        <GameComponent 
+            Session="@session"
+            UserId="@UserId"
+            OnBackClick="BackHandler" />
+    }
+</div>
+
+@code {
+    [Parameter] public GameTab CurrentTab { get; set; }
+    [Parameter] public Guid UserId { get; set; }
+    [Parameter] public EventCallback<GameTab> OnTabChange { get; set; }
+
+    private SessionResponse? session;
+    private GameTab prevTab;
+
+    private async void ShowGameHandler(SessionResponse response)
+    {
+        if (response is null)
+        {
+            return;
+        }
+
+        session = response;
+        prevTab = CurrentTab;
+        CurrentTab = GameTab.Game;
+
+        await OnTabChange.InvokeAsync(CurrentTab);
+
+    }
+
+    private void BackHandler()
+    {
+        OnTabChange.InvokeAsync(prevTab);
+        session = null;
+    }
+}
