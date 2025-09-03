@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using TicTacToe.Web.Filter;
-using TicTacToe.Web.Models.Responses;
 
 namespace TicTacToe.Web.SignalRHub;
 

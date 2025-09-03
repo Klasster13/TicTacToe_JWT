@@ -1,13 +1,14 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
+using System.Text;
 using TicTacToe.DataSource.Context;
 using TicTacToe.DI;
 using TicTacToe.Web.SignalRHub;
 
 var builder = WebApplication.CreateBuilder(args);
-
-builder.Services.AddSignalR();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -18,9 +19,38 @@ builder.Services.AddControllers().AddJsonOptions(options =>
         options.JsonSerializerOptions.WriteIndented = true;
     });
 
+builder.Services.AddAuthorization();
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidateAudience = true,
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
+                builder.Configuration["Jwt:AccessSecret"]
+                ?? throw new InvalidDataException("Jwt Access key configuration is invalid.")
+                )),
+            ValidateLifetime = true,
+        };
+    }
+    );
+
+builder.Services.AddSignalR();
 builder.Services.AddOpenApi();
 builder.Services.ConfigureServices();
 builder.Services.AddEndpointsApiExplorer();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowClient", policy =>
+        policy.AllowAnyOrigin()
+            .AllowAnyMethod()
+            .AllowAnyHeader());
+});
 
 builder.Services.AddSwaggerGen(swagger =>
 {
@@ -37,13 +67,14 @@ builder.Services.AddSwaggerGen(swagger =>
         }
     });
 
-    swagger.AddSecurityDefinition("Basic", new OpenApiSecurityScheme
+    swagger.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
-        Type = SecuritySchemeType.Http,
-        Scheme = "Basic",
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Basic Authorization header."
+        Description = "Bearer Authorization header."
     });
 
     swagger.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -54,7 +85,7 @@ builder.Services.AddSwaggerGen(swagger =>
                 Reference = new OpenApiReference
                 {
                     Type = ReferenceType.SecurityScheme,
-                    Id = "Basic"
+                    Id = "Bearer"
                 }
             },
             Array.Empty<string>()
@@ -66,18 +97,11 @@ builder.Services.AddSwaggerGen(swagger =>
     swagger.IncludeXmlComments(xmlPath);
 });
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowClient", policy =>
-        policy.AllowAnyOrigin()
-            .AllowAnyMethod()
-            .AllowAnyHeader());
-});
-
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
+    app.UseDeveloperExceptionPage();
     app.MapOpenApi();
     app.UseSwagger();
     app.UseSwaggerUI(c =>
@@ -91,12 +115,15 @@ else
     app.UseExceptionHandler("/error", createScopeForErrors: true);
 }
 
+app.UseCors("AllowClient");
+app.UseRouting();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.UseHttpsRedirection();
-app.UseRouting();
-app.UseCors("AllowClient");
-app.MapHub<GameHub>(GameHub.URL);
 
+app.MapHub<GameHub>(GameHub.URL);
 app.MapControllers();
 
 using (var scope = app.Services.CreateScope())

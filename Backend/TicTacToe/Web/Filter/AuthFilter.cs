@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using TicTacToe.Domain.Services.AuthService;
@@ -49,7 +48,6 @@ public class AuthFilter(IAuthService authService) : IAsyncAuthorizationFilter
         context.Result = new ContentResult
         {
             Content = errorMessage,
-            //Content = JsonSerializer.Serialize(new { error = errorMessage }),
             ContentType = "application/json",
             StatusCode = StatusCodes.Status401Unauthorized
         };

@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using TicTacToe.Domain.Models;
 using TicTacToe.Web.Models.Requests;
 using TicTacToe.Web.Models.Responses;
 
