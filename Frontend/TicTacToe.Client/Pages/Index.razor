@@ -32,27 +32,30 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var token = await LocalStorage.GetItemAsync<string>("authToken");
+        var refreshToken = await LocalStorage.GetItemAsync<string>("refreshToken");
 
-        if (!string.IsNullOrEmpty(token))
+        if (!string.IsNullOrEmpty(refreshToken))
         {
             try
             {
-                var response = await Http.GetAsync("/auth/authorization");
+                var response = await Http.PostAsJsonAsync("/auth/refresh-access",
+                    new RefreshJwtRequest { RefreshToken = refreshToken }
+                );
 
                 if (response.IsSuccessStatusCode)
-                {
-                    var userId = await response.Content.ReadFromJsonAsync<Guid>();
-                    Navigation.NavigateTo($"/user/{userId}");
+                {                    
+                    Navigation.NavigateTo($"/user");
                 }
                 else
                 {
-                    await LocalStorage.RemoveItemAsync("authToken");
+                    await LocalStorage.RemoveItemAsync("accessToken");
+                    await LocalStorage.RemoveItemAsync("refreshToken");
                 }
             }
             catch (Exception)
             {
-                await LocalStorage.RemoveItemAsync("authToken");
+                await LocalStorage.RemoveItemAsync("accessToken");
+                await LocalStorage.RemoveItemAsync("refreshToken");
             }
         }
     }

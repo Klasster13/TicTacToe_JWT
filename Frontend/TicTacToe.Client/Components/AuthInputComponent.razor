@@ -38,7 +38,7 @@
 
 
 @code {
-    private AuthRequest model = new();
+    private JwtRequest model = new();
     private string? errorMessage;
 
     [Parameter] public bool IsSignIn { get; set; } = true;
@@ -52,28 +52,31 @@
 
     private async Task SignInHandler()
     {
-        var token = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{model.Login}:{model.Password}"));
-
         try
-        {         
-            await LocalStorage.SetItemAsync("authToken", token);
-
-            var response = await Http.GetAsync("/auth/authorization");            
+        { 
+            var response = await Http.PostAsJsonAsync("/auth/authorization", model);            
 
             if (response.IsSuccessStatusCode)
             {
-                var userId = await response.Content.ReadFromJsonAsync<Guid>();
-                Navigation.NavigateTo($"/user/{userId}");
+                var jwtResponse = await response.Content.ReadFromJsonAsync<JwtResponse>();
+
+                if (jwtResponse is not null)
+                {
+                    await LocalStorage.SetItemAsync("accessToken", jwtResponse.AccessToken);
+                    await LocalStorage.SetItemAsync("refreshToken", jwtResponse.RefreshToken);
+                    Navigation.NavigateTo($"/user");                    
+                } else
+                {
+                    errorMessage = "Connection problem";                    
+                }
             }
             else
             {
-                await LocalStorage.RemoveItemAsync("authToken");
                 errorMessage = "Invalid login or password";
             }
         }
         catch (Exception ex)
         {
-            await LocalStorage.RemoveItemAsync("authToken");
             errorMessage = ex.Message;
         }
     }

@@ -8,4 +8,5 @@ public interface IUserController
 {
     Task<ActionResult<UserResponse>> GetUserById(Guid id);
     Task<IActionResult> UpdateUser(UpdateUserRequest request);
+    Task<ActionResult<UserResponse>> GetCurrentUser();
 }

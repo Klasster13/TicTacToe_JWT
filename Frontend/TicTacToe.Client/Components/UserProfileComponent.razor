@@ -11,7 +11,7 @@
     </div>
 
     <div class="profile-info">
-        <h3>@(user?.Login ?? "Player")</h3>
+        <h3>@(User?.Login ?? "Player")</h3>
 
         <button class="main-btn edit-btn"
         @onclick="() => OnTabButtonClick.InvokeAsync(GameTab.EditProfile)">
@@ -43,32 +43,20 @@
 
 
 @code {
-    [Parameter]
-    public Guid UserId { get; set; }
-
-    [Parameter]
-    public EventCallback<GameTab> OnTabButtonClick { get; set; }
-
-    private UserResponse? user;    
+    [Parameter] public EventCallback<GameTab> OnTabButtonClick { get; set; }
+    [Parameter] public UserResponse? User { get; set; }
     private string avatarUrl = "noavatar.png";
     private string? errorMessage;
 
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        try
-        {
-            UserUpdate.OnUserUpdate += UpdateData;
-            user = await Http.GetFromJsonAsync<UserResponse>($"/user/{UserId}");
-        }
-        catch (Exception ex) {
-            errorMessage = ex.Message;
-        }
+        UserUpdate.OnUserUpdate += UpdateData;        
     }    
 
     private void UpdateData(UserResponse user)
     {
-        this.user = user;
+        User = user;
         StateHasChanged();
     }
 

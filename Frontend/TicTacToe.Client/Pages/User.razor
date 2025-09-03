@@ -1,10 +1,11 @@
-﻿@page "/user/{userId:guid}"
+﻿@page "/user"
 
 @using TicTacToe.Client.Handlers
 
 @inject ILocalStorageService LocalStorage
 @inject NavigationManager Navigation
 @inject RefreshDataService RefreshData
+@inject HttpClient Http
 
 
 <div class="top-bar">    
@@ -14,15 +15,16 @@
 <div class="user-page-container">
 
     <div class="profile-sidebar">
-        <UserProfileComponent UserId="@UserId"
+        <UserProfileComponent 
+            User="@user"
             OnTabButtonClick="SwitchTabHandler" />
     </div>
     
     <div class="main-content">        
         <div class="game-content">
             <MainContentComponent
+                UserId="@user.Id"
                 CurrentTab="@currentTab"
-                UserId="@UserId"
                 OnTabChange="SwitchTabHandler"/>
         </div>
     </div>
@@ -31,24 +33,70 @@
 
 
 @code {
-    [Parameter] public Guid UserId { get; set; }
-
     private GameTab currentTab = GameTab.CreateGame;
-
+    private UserResponse user = null!;
 
     protected override async Task OnInitializedAsync()
     {
-        if (!await LocalStorage.ContainKeyAsync("authToken"))
+        try
         {
-            Navigation.NavigateTo("/");
+            var isAccessTokenExist = await LocalStorage.ContainKeyAsync("accessToken");
+            var isRefreshTokenExist = await LocalStorage.ContainKeyAsync("refreshToken");
+
+            if (!isAccessTokenExist && !isRefreshTokenExist)
+            {
+                await LogOutHandler();
+                return;
+            }
+
+            if (!isAccessTokenExist && isRefreshTokenExist)
+            {
+                var refreshToken = await LocalStorage.GetItemAsync<string>("refreshToken");
+                if (string.IsNullOrEmpty(refreshToken))
+                {
+                    throw new ArgumentNullException(nameof(refreshToken));
+                }
+
+                var response = await Http.PostAsJsonAsync("/auth/refresh-access", new RefreshJwtRequest { RefreshToken = refreshToken });
+                if (response is null || !response.IsSuccessStatusCode)
+                {
+                    await LogOutHandler();
+                    return;
+                }
+
+                var jwtResponse = await response.Content.ReadFromJsonAsync<JwtResponse>();
+                if (jwtResponse is null)
+                {
+                    await LogOutHandler();
+                    return;
+                }
+
+                await LocalStorage.SetItemAsync("accessToken", jwtResponse.AccessToken);
+                await LocalStorage.SetItemAsync("refreshToken", jwtResponse.RefreshToken);
+                await GetCurrentUser();
+                return;
+            }
+
+            await GetCurrentUser();
         }
+        catch (Exception)
+        {
+            await LogOutHandler();
+        }
+    }
+
+
+    private async Task GetCurrentUser()
+    {
+        user = await Http.GetFromJsonAsync<UserResponse>($"/user/current")
+                ?? throw new ArgumentNullException();
     }
 
 
     private async Task LogOutHandler()
     {
-
-        await LocalStorage.RemoveItemAsync("authToken");
+        await LocalStorage.RemoveItemAsync("accessToken");
+        await LocalStorage.RemoveItemAsync("refreshToken");
         Navigation.NavigateTo("/", forceLoad: true);
     }
 

@@ -80,7 +80,7 @@ public class AuthController(IAuthService authService) : ControllerBase, IAuthCon
     /// <responce code="401">Unauthorized</responce>
     /// <responce code="500">Internal server error</responce>
     [AllowAnonymous]
-    [HttpGet("authorization")]
+    [HttpPost("authorization")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -89,10 +89,10 @@ public class AuthController(IAuthService authService) : ControllerBase, IAuthCon
     {
         try
         {
-            if (!Request.Headers.TryGetValue("Authorization", out var authHeader))
-            {
-                return Unauthorized();
-            }
+            //if (!Request.Headers.TryGetValue("Authorization", out var authHeader))
+            //{
+            //    return Unauthorized();
+            //}
 
             var jwtToken = await _authService.AuthorizeUser(request.ToDomainModel());
 
