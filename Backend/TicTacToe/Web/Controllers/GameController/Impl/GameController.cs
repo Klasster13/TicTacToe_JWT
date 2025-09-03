@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using TicTacToe.Domain.Services.GameService;
-using TicTacToe.Web.Filter;
 using TicTacToe.Web.Mappers;
 using TicTacToe.Web.Models.Requests;
 using TicTacToe.Web.Models.Responses;
@@ -14,7 +13,7 @@ namespace TicTacToe.Web.Controllers.GameController.Impl;
 [ApiController]
 [Route("game")]
 [Produces("application/json")]
-[ServiceFilter(typeof(AuthFilter))]
+[Authorize]
 public class GameController(ISessionService sessionService, IHubContext<GameHub> hub) : ControllerBase, IGameController
 {
     private readonly ISessionService _sessionService = sessionService;

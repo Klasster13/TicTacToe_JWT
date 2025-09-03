@@ -1,6 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using TicTacToe.Domain.Services.UserService;
-using TicTacToe.Web.Filter;
 using TicTacToe.Web.Mappers;
 using TicTacToe.Web.Models.Requests;
 using TicTacToe.Web.Models.Responses;
@@ -10,7 +10,7 @@ namespace TicTacToe.Web.Controllers.UserController.Impl;
 [ApiController]
 [Route("user")]
 [Produces("application/json")]
-[ServiceFilter(typeof(AuthFilter))]
+[Authorize]
 public class UserController(IUserService userService) : ControllerBase, IUserController
 {
     private readonly IUserService _userService = userService;

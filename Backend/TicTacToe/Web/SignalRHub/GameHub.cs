@@ -1,11 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
-using TicTacToe.Web.Filter;
 
 namespace TicTacToe.Web.SignalRHub;
 
 
-[ServiceFilter(typeof(AuthFilter))]
+[Authorize]
 public class GameHub : Hub
 {
     public static readonly string URL = "/game/gameHub";

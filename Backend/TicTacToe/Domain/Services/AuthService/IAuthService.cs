@@ -5,6 +5,7 @@ namespace TicTacToe.Domain.Services.AuthService;
 public interface IAuthService
 {
     Task<User> RegisterUser(User user);
-    Task<Guid?> AuthorizeUser(User user);
-    User? GetUserFromBase64(string authHeader);
+    Task<JwtToken?> AuthorizeUser(User user);
+    Task<JwtToken?> UpdateAccessToken(string refreshToken);
+    Task<JwtToken?> UpdateRefreshToken(string refreshToken);
 }

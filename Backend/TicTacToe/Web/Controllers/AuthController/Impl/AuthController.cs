@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TicTacToe.Domain.Services.AuthService;
-using TicTacToe.Web.Filter;
 using TicTacToe.Web.Mappers;
 using TicTacToe.Web.Models.Requests;
 using TicTacToe.Web.Models.Responses;
@@ -12,7 +11,7 @@ namespace TicTacToe.Web.Controllers.AuthController.Impl;
 [ApiController]
 [Route("auth")]
 [Produces("application/json")]
-[ServiceFilter(typeof(AuthFilter))]
+[Authorize]
 public class AuthController(IAuthService authService) : ControllerBase, IAuthController
 {
     private readonly IAuthService _authService = authService;
@@ -85,7 +84,7 @@ public class AuthController(IAuthService authService) : ControllerBase, IAuthCon
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> Authorization()
+    public async Task<ActionResult<JwtResponse>> Authorization([FromBody] JwtRequest request)
     {
         try
         {
@@ -94,20 +93,14 @@ public class AuthController(IAuthService authService) : ControllerBase, IAuthCon
                 return Unauthorized();
             }
 
-            var user = _authService.GetUserFromBase64(authHeader.ToString());
+            var existingUser = await _authService.AuthorizeUser(request.ToDomainModel());
 
-            if (user is null)
+            if (existingUser is null)
             {
                 return Unauthorized();
             }
 
-            var id = await _authService.AuthorizeUser(user);
-
-            if (!id.HasValue)
-            {
-                return Unauthorized();
-            }
-
+            var accessToken =
             return Ok(id);
         }
         catch (InvalidOperationException ex)
@@ -118,5 +111,17 @@ public class AuthController(IAuthService authService) : ControllerBase, IAuthCon
         {
             return StatusCode(500, "Internal server error");
         }
+    }
+
+
+    public Task<ActionResult<JwtResponse>> UpdateAccessToken(RefreshJwtRequest request)
+    {
+        throw new NotImplementedException();
+    }
+
+
+    public Task<ActionResult<JwtResponse>> UpdateRefreshToken(RefreshJwtRequest request)
+    {
+        throw new NotImplementedException();
     }
 }

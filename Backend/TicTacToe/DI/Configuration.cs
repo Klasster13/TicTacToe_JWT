@@ -16,9 +16,10 @@ using TicTacToe.Web.Controllers.UserController;
 using TicTacToe.Web.Controllers.UserController.Impl;
 using TicTacToe.Domain.Services.AuthService;
 using TicTacToe.Domain.Services.AuthService.Impl;
-using TicTacToe.Web.Filter;
 using TicTacToe.Domain.Services.PasswordService;
 using TicTacToe.Domain.Services.PasswordService.Impl;
+using TicTacToe.Domain.Services.JwtService;
+using TicTacToe.Domain.Services.JwtService.Impl;
 
 namespace TicTacToe.DI;
 
@@ -32,11 +33,11 @@ public static class DependencyConfiguration
         services.AddScoped<ISessionService, SessionService>();
         services.AddScoped<IUserService, UserService>();
         services.AddSingleton<IPasswordService, PasswordService>();
+        services.AddScoped<IJwtService, JwtService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IGameController, GameController>();
         services.AddScoped<IAuthController, AuthController>();
         services.AddScoped<IUserController, UserController>();
-        services.AddScoped<AuthFilter>();
 
         return services;
     }

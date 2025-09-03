@@ -81,14 +81,27 @@ public static class UserWebMapper
         Id = user.Id,
         Login = user.Login
     };
-}
 
-public static class UpdateUserMapper
-{
     public static User ToDomainModel(this UpdateUserRequest request, Guid userId) => new()
     {
         Id = userId,
         Login = request.Login ?? string.Empty,
         Password = request.Password ?? string.Empty,
+    };
+
+    public static User ToDomainModel(this JwtRequest request) => new()
+    {
+        Login = request.Login,
+        Password = request.Password
+    };
+}
+
+
+public static class JwtTokenMapper
+{
+    public static JwtResponse ToWebModel(this JwtToken token) => new()
+    {
+        AccessToken = token.AccessToken,
+        RefreshToken = token.RefreshToken
     };
 }

@@ -1,20 +1,25 @@
-﻿using System.Text;
+﻿using System.Security.Claims;
 using TicTacToe.Domain.Models;
+using TicTacToe.Domain.Services.JwtService;
 using TicTacToe.Domain.Services.PasswordService;
 using TicTacToe.Domain.Services.UserService;
 
 namespace TicTacToe.Domain.Services.AuthService.Impl;
 
-public class AuthService(IUserService userService, IPasswordService passwordService) : IAuthService
+public class AuthService(
+    IUserService userService,
+    IPasswordService passwordService,
+    IJwtService jwtService
+    ) : IAuthService
 {
     private readonly IUserService _userService = userService;
     private readonly IPasswordService _passwordService = passwordService;
-
+    private readonly IJwtService _jwtService = jwtService;
 
     public async Task<User> RegisterUser(User user) => await _userService.CreateUser(user);
 
 
-    public async Task<Guid?> AuthorizeUser(User user)
+    public async Task<JwtToken?> AuthorizeUser(User user)
     {
         var existingUser = await _userService.GetUserByLogin(user.Login);
 
@@ -28,35 +33,62 @@ public class AuthService(IUserService userService, IPasswordService passwordServ
             return null;
         }
 
-        return existingUser.Id;
+        return new JwtToken
+        {
+            AccessToken = _jwtService.GenerateAccessToken(existingUser),
+            RefreshToken = _jwtService.GenerateRefreshToken(existingUser)
+        };
     }
 
 
-    public User? GetUserFromBase64(string authHeader)
+    public async Task<JwtToken?> UpdateAccessToken(string refreshToken)
     {
-        var authString = authHeader.ToString();
-
-        if (string.IsNullOrEmpty(authString) || !authString.StartsWith("Basic "))
+        if (!_jwtService.ValidateRefreshToken(refreshToken))
         {
-            return null;
+            throw new InvalidOperationException("Refresh token is invalid.");
         }
 
-        var encodedString = authString["Basic ".Length..];
-        var decodedString = Encoding.UTF8.GetString(Convert.FromBase64String(encodedString));
+        var claims = _jwtService.GetClaims(refreshToken);
+        var userIdString = claims.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        var data = decodedString.Split(':', 2);
-
-        if (data.Length != 2)
+        if (!string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
         {
-            return null;
+            throw new InvalidOperationException("Claims is invalid.");
         }
 
-        var user = new User
+        var user = await _userService.GetUserById(userId)
+                ?? throw new KeyNotFoundException("User not found.");
+
+        return new JwtToken
         {
-            Login = data[0],
-            Password = data[1]
+            AccessToken = _jwtService.GenerateAccessToken(user),
+            RefreshToken = refreshToken
         };
+    }
 
-        return user;
+
+    public async Task<JwtToken?> UpdateRefreshToken(string refreshToken)
+    {
+        if (!_jwtService.ValidateRefreshToken(refreshToken))
+        {
+            throw new InvalidOperationException("Refresh token is invalid.");
+        }
+
+        var claims = _jwtService.GetClaims(refreshToken);
+        var userIdString = claims.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (!string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+        {
+            throw new InvalidOperationException("Claims is invalid.");
+        }
+
+        var user = await _userService.GetUserById(userId)
+                ?? throw new KeyNotFoundException("User not found.");
+
+        return new JwtToken
+        {
+            AccessToken = _jwtService.GenerateAccessToken(user),
+            RefreshToken = _jwtService.GenerateRefreshToken(user)
+        };
     }
 }
