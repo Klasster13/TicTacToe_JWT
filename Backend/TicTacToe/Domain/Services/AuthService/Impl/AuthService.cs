@@ -41,7 +41,7 @@ public class AuthService(
     }
 
 
-    public async Task<JwtToken?> UpdateAccessToken(string refreshToken)
+    public async Task<JwtToken> UpdateAccessToken(string refreshToken)
     {
         if (!_jwtService.ValidateRefreshToken(refreshToken))
         {
@@ -67,7 +67,7 @@ public class AuthService(
     }
 
 
-    public async Task<JwtToken?> UpdateRefreshToken(string refreshToken)
+    public async Task<JwtToken> UpdateRefreshToken(string refreshToken)
     {
         if (!_jwtService.ValidateRefreshToken(refreshToken))
         {

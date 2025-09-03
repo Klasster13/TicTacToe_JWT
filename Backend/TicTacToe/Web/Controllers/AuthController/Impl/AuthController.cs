@@ -8,10 +8,10 @@ using TicTacToe.Web.Models.Responses;
 namespace TicTacToe.Web.Controllers.AuthController.Impl;
 
 
+[Authorize]
 [ApiController]
 [Route("auth")]
 [Produces("application/json")]
-[Authorize]
 public class AuthController(IAuthService authService) : ControllerBase, IAuthController
 {
     private readonly IAuthService _authService = authService;
@@ -68,11 +68,12 @@ public class AuthController(IAuthService authService) : ControllerBase, IAuthCon
     /// <summary>
     /// Authorize existing user
     /// </summary>
-    /// <returns>No content</returns>
+    /// <param name="request">User login and password</param>
+    /// <returns>Access and refresh tokens</returns>
     /// <remarks>
     /// Sample request:
     /// 
-    ///     GET /game/a3d4e5f6-7890-1234-b567-c89012345678
+    ///     GET /auth/authorization
     /// </remarks>
     /// <responce code="200">Success</responce>
     /// <responce code="400">Bad ID</responce>
@@ -93,15 +94,14 @@ public class AuthController(IAuthService authService) : ControllerBase, IAuthCon
                 return Unauthorized();
             }
 
-            var existingUser = await _authService.AuthorizeUser(request.ToDomainModel());
+            var jwtToken = await _authService.AuthorizeUser(request.ToDomainModel());
 
-            if (existingUser is null)
+            if (jwtToken is null)
             {
                 return Unauthorized();
             }
 
-            var accessToken =
-            return Ok(id);
+            return Ok(jwtToken.ToWebModel());
         }
         catch (InvalidOperationException ex)
         {
@@ -114,14 +114,101 @@ public class AuthController(IAuthService authService) : ControllerBase, IAuthCon
     }
 
 
-    public Task<ActionResult<JwtResponse>> UpdateAccessToken(RefreshJwtRequest request)
+    /// <summary>
+    /// Update access token
+    /// </summary>
+    /// <param name="request">Refresh token</param>
+    /// <returns>Access and refresh tokens</returns>
+    /// <remarks>
+    /// Sample request:
+    /// 
+    ///     POST /auth/refresh-access
+    /// </remarks>
+    /// <responce code="200">Success</responce>
+    /// <responce code="400">Bad ID</responce>
+    /// <responce code="401">Unauthorized</responce>
+    /// <responce code="404">User not found</responce>
+    /// <responce code="500">Internal server error</responce>
+    [AllowAnonymous]
+    [HttpPost("refresh-access")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<JwtResponse>> UpdateAccessToken([FromBody] RefreshJwtRequest request)
     {
-        throw new NotImplementedException();
+        try
+        {
+            if (request is null || string.IsNullOrEmpty(request.RefreshToken))
+            {
+                return BadRequest("Provided data is invalid.");
+            }
+
+            var token = await _authService.UpdateAccessToken(request.RefreshToken);
+
+            return Ok(token.ToWebModel());
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, "Internal server error");
+        }
     }
 
 
-    public Task<ActionResult<JwtResponse>> UpdateRefreshToken(RefreshJwtRequest request)
+    /// <summary>
+    /// Update tokens
+    /// </summary>
+    /// <param name="request">Refresh token</param>
+    /// <returns>Access and refresh tokens</returns>
+    /// <remarks>
+    /// Sample request:
+    /// 
+    ///     POST /auth/refresh
+    /// </remarks>
+    /// <responce code="200">Success</responce>
+    /// <responce code="400">Bad ID</responce>
+    /// <responce code="401">Unauthorized</responce>
+    /// <responce code="404">User not found</responce>
+    /// <responce code="500">Internal server error</responce>
+    [HttpPost("refresh")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<JwtResponse>> UpdateRefreshToken([FromBody] RefreshJwtRequest request)
     {
-        throw new NotImplementedException();
+        try
+        {
+            if (request is null || string.IsNullOrEmpty(request.RefreshToken))
+            {
+                return BadRequest("Provided data is invalid.");
+            }
+
+            var token = await _authService.UpdateRefreshToken(request.RefreshToken);
+
+            return Ok(token.ToWebModel());
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, "Internal server error");
+        }
     }
 }
