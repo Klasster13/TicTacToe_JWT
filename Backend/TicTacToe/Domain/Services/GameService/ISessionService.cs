@@ -15,4 +15,5 @@ public interface ISessionService
     Task<Session> MakeMove(Session session);
     Task<Session> UpdateSessionMode(Guid sessionId, Guid userId, Mode newMode);
     Task<Session> ResetSession(Guid sessionId, Guid userId);
+    Task<IEnumerable<Session>> GetFinishedSessions(Guid userId);
 }

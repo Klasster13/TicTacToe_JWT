@@ -7,6 +7,7 @@ public interface IDataService
     Task<Session?> GetSession(Guid id);
     Task<IEnumerable<Session>> GetUserSessions(Guid userId);
     Task<IEnumerable<Session>> GetAvailableSessions(Guid userId);
+    Task<IEnumerable<Session>> GetFinishedSessions(Guid userId);
     Task AddSession(Session session);
     Task UpdateSession(Session session);
     Task DeleteSession(Guid id);

@@ -326,10 +326,12 @@ public class GameController(ISessionService sessionService, IHubContext<GameHub>
     ///     GET /game/available
     /// </remarks>
     /// <responce code="200">Success</responce>
+    /// <responce code="400">Bad data</responce>
     /// <responce code="401">Unauthorized</responce>
     /// <responce code="500">Internal server error</responce>
     [HttpGet("available")]
     [ProducesResponseType(typeof(IEnumerable<SessionResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<IEnumerable<SessionResponse>>> GetAvailableSessions()
@@ -363,10 +365,12 @@ public class GameController(ISessionService sessionService, IHubContext<GameHub>
     ///     GET /game/my-games
     /// </remarks>
     /// <responce code="200">Delete was successful</responce>
+    /// <responce code="400">Bad data</responce>
     /// <responce code="401">Unauthorized</responce>
     /// <responce code="500">Internal server error</responce>
     [HttpGet("my-games")]
     [ProducesResponseType(typeof(IEnumerable<SessionResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<IEnumerable<SessionResponse>>> GetUserSessions()
@@ -458,12 +462,15 @@ public class GameController(ISessionService sessionService, IHubContext<GameHub>
     ///     GET /game/a3d4e5f6-7890-1234-b567-c89012345678/reset
     /// </remarks>
     /// <responce code="200">Success</responce>
+    /// <responce code="400">Bad data</responce>
     /// <responce code="401">Unauthorized</responce>
     /// <responce code="404">Session was not found</responce>
     /// <responce code="409">User is not allwed to modify session</responce>
     /// <responce code="500">Internal server error</responce>
     [HttpGet("{sessionId}/reset")]
     [ProducesResponseType(typeof(SessionResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -498,6 +505,45 @@ public class GameController(ISessionService sessionService, IHubContext<GameHub>
         catch (InvalidOperationException ex)
         {
             return Conflict(ex.Message);
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+
+    /// <summary>
+    /// Get all sessions finished by user
+    /// </summary>
+    /// <returns>List of finished sessions</returns>
+    /// <remarks>
+    /// Sample request:
+    /// 
+    ///     GET /game/finished
+    /// </remarks>
+    /// <responce code="200">Success</responce>
+    /// <responce code="400">Bad data</responce>
+    /// <responce code="401">Unauthorized</responce>
+    /// <responce code="500">Internal server error</responce>
+    [HttpGet("finished")]
+    [ProducesResponseType(typeof(IEnumerable<SessionResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<IEnumerable<SessionResponse>>> GetFinishedSessions()
+    {
+        try
+        {
+            var userIdString = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+            {
+                return BadRequest("Provided data is invalid.");
+            }
+
+            var sessions = await _sessionService.GetFinishedSessions(userId);
+            return Ok(sessions.Select(s => s.ToWebModel()));
         }
         catch (Exception)
         {

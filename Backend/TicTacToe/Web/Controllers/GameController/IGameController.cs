@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using TicTacToe.Domain.Models;
 using TicTacToe.Web.Models.Requests;
 using TicTacToe.Web.Models.Responses;
 
@@ -15,4 +16,5 @@ public interface IGameController
     Task<ActionResult<IEnumerable<SessionResponse>>> GetUserSessions();
     Task<ActionResult<SessionResponse>> UpdateMode(Guid sessionId, UpdateModeRequest request);
     Task<ActionResult<SessionResponse>> ResetSession(Guid sessionId);
+    Task<ActionResult<IEnumerable<SessionResponse>>> GetFinishedSessions();
 }

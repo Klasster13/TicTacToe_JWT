@@ -16,6 +16,7 @@ public class SessionService(IDataService dataService) : ISessionService
     public async Task DeleteSession(Guid sessionId) => await _dataService.DeleteSession(sessionId);
     public async Task<IEnumerable<Session>> GetUserSessions(Guid userId) => await _dataService.GetUserSessions(userId);
     public async Task<IEnumerable<Session>> GetAvailableSessions(Guid userId) => await _dataService.GetAvailableSessions(userId);
+    public async Task<IEnumerable<Session>> GetFinishedSessions(Guid userId) => await _dataService.GetFinishedSessions(userId);
 
 
     public async Task<Session> CreateSession(Session session)
@@ -26,6 +27,7 @@ public class SessionService(IDataService dataService) : ISessionService
         await _dataService.AddSession(session);
         return session;
     }
+
 
     public async Task<Session?> ValidateMove(Guid userId, Guid sessionId, Field newField)
     {
