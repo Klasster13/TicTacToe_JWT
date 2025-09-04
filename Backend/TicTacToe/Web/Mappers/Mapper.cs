@@ -105,3 +105,14 @@ public static class JwtTokenMapper
         RefreshToken = token.RefreshToken
     };
 }
+
+
+public static class WinRatioMapper
+{
+    public static WinRatioResponse ToWebModel(this WinRatio winRatio) => new()
+    {
+        Id = winRatio.Id,
+        Login = winRatio.Login,
+        WinRatio = winRatio.Ratio
+    };
+}

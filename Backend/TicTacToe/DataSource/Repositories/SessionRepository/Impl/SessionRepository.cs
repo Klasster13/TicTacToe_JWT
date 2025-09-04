@@ -103,8 +103,7 @@ public class SessionRepository(AppDbContext context) : ISessionRepository
         return await _context.Sessions
             .AsNoTracking()
             .Where(s => (s.Player1Id == userId || s.Player2Id == userId)
-                        && 
-                        (s.State == Common.Enums.State.Player1Winner
+                        && (s.State == Common.Enums.State.Player1Winner
                         || s.State == Common.Enums.State.Player2Winner
                         || s.State == Common.Enums.State.Draw))
             .OrderByDescending(s => s.UpdatedAt)

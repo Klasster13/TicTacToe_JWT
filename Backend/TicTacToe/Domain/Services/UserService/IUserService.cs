@@ -9,4 +9,5 @@ public interface IUserService
     Task<User?> GetUserByLogin(string login);
     Task DeleteUser(Guid id);
     Task<User> UpdateUser(User updatedUser);
+    Task<IEnumerable<WinRatio>> GetLeaderboard(int limit);
 }

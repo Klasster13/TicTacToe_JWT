@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using TicTacToe.Domain.Models;
 using TicTacToe.Domain.Services.UserService;
 using TicTacToe.Web.Mappers;
 using TicTacToe.Web.Models.Requests;
@@ -162,6 +163,38 @@ public class UserController(IUserService userService) : ControllerBase, IUserCon
             }
 
             return Ok(user.ToWebModel());
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+
+    /// <summary>
+    /// User leaderboard sorted by win ratio
+    /// </summary>
+    /// <param name="limit">Number of taken items</param>
+    /// <returns></returns>
+    /// <remarks>
+    /// Sample request:
+    /// 
+    ///     GET /user/leaderboard?limit=5
+    /// </remarks>
+    /// <responce code="200">Success</responce>
+    /// <responce code="401">Unauthorized</responce>
+    /// <responce code="500">Internal server error</responce>
+    [ProducesResponseType(typeof(UserResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    [HttpGet("leaderboard")]
+    public async Task<ActionResult<IEnumerable<WinRatio>>> GetLeaderboard([FromQuery] int limit = 10)
+    {
+        try
+        {
+            var leaderboard = await _userService.GetLeaderboard(limit);
+
+            return Ok(leaderboard.Select(w => w.ToWebModel()));
         }
         catch (Exception)
         {
