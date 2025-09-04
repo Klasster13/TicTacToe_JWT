@@ -83,7 +83,7 @@ public class UserService(IServiceProvider serviceProvider,
 
             int loses = totalGames - wins;
 
-            float ratio = loses == 0 ? 1 : (float)wins / loses;
+            float ratio = loses == 0 ? wins : (float)wins / loses;
 
             leaderboard.Add(new WinRatio
             {

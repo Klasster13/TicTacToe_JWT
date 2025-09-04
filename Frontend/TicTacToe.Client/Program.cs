@@ -10,8 +10,6 @@ var apiUrl = builder.Configuration.GetConnectionString("ApiConnection")
    //?? "http://localhost:6543/";
    ?? "https://localhost:7654/";
 
-Console.WriteLine($"API URL=!!!{apiUrl}!!!!");
-
 builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddScoped<AuthHeaderHandler>();
 builder.Services.AddScoped<UserDataUpdateService>();
