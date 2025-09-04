@@ -35,6 +35,11 @@
             @onclick="() => OnTabButtonClick.InvokeAsync(GameTab.MyGames)">
             My games
         </button>
+
+        <button class="main-btn action-btn"
+                @onclick="() => OnTabButtonClick.InvokeAsync(GameTab.Leaderboard)">
+            Leaderboard
+        </button>
     </div>
 </div>
 
@@ -43,11 +48,5 @@
     [Parameter] public EventCallback<GameTab> OnTabButtonClick { get; set; }
     [Parameter] public UserResponse? User { get; set; }
     private string avatarUrl = "noavatar.png";
-    private string? errorMessage;
-
-
-    protected override void OnInitialized()
-    {
-              
-    }        
+    private string? errorMessage;     
 }

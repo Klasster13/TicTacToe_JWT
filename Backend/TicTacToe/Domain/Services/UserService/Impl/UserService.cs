@@ -4,10 +4,12 @@ using TicTacToe.Domain.Services.PasswordService;
 
 namespace TicTacToe.Domain.Services.UserService.Impl;
 
-public class UserService(IDataService dataService, IPasswordService passwordService) : IUserService
+public class UserService(IServiceProvider serviceProvider,
+    IDataService dataService, IPasswordService passwordService) : IUserService
 {
     private readonly IDataService _dataService = dataService;
     private readonly IPasswordService _passwordService = passwordService;
+    private readonly IServiceProvider _serviceProvider = serviceProvider;
 
 
     public async Task<User> CreateUser(User user)
@@ -57,28 +59,43 @@ public class UserService(IDataService dataService, IPasswordService passwordServ
     {
         var users = await _dataService.GetUsers();
 
-        var topPlayers = new List<WinRatio>();
+        var leaderboard = new List<WinRatio>();
 
         foreach (var user in users)
         {
             var games = await _dataService.GetFinishedSessions(user.Id);
-            int total = games.Count();
+            int totalGames = games.Count();
 
-            int wins = 0;
-            if (total > 0)
+            if (totalGames == 0)
             {
-                wins = games.Count(s => (s.Player1Id == user.Id && s.State == Common.Enums.State.Player1Winner)
-                    || (s.Player2Id == user.Id && s.State == Common.Enums.State.Player2Winner));
+                leaderboard.Add(new WinRatio
+                {
+                    Id = user.Id,
+                    Login = user.Login,
+                    Ratio = 0
+                });
+                continue;
             }
 
-            topPlayers.Add(new WinRatio
+            int wins = games.Count(s =>
+                (s.Player1Id == user.Id && s.State == Common.Enums.State.Player1Winner) ||
+                (s.Player2Id == user.Id && s.State == Common.Enums.State.Player2Winner));
+
+            int loses = totalGames - wins;
+
+            float ratio = loses == 0 ? 1 : (float)wins / loses;
+
+            leaderboard.Add(new WinRatio
             {
                 Id = user.Id,
                 Login = user.Login,
-                Ratio = total > 0 ? (float)wins / (total - wins) : 0
+                Ratio = ratio
             });
         }
 
-        return topPlayers.OrderByDescending(p => p.Ratio).Take(limit);
+        return leaderboard
+            .OrderByDescending(p => p.Ratio)
+            .ThenByDescending(p => p.Login)
+            .Take(limit);
     }
 }

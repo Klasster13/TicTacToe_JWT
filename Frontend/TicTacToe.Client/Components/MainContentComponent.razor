@@ -24,6 +24,10 @@
             UserId="@UserId"
             OnBackClick="BackHandler" />
     }
+    else if (CurrentTab == GameTab.Leaderboard)
+    {
+        <LeaderboardComponent />
+    }
 </div>
 
 @code {

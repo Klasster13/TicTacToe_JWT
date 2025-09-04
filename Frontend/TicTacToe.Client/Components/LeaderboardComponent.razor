@@ -1,0 +1,118 @@
+﻿@using Microsoft.AspNetCore.Components.QuickGrid
+@using TicTacToe.Client.Handlers
+
+@inject HttpClient Http
+@inject ILocalStorageService LocalStorage
+@inject NavigationManager Navigation
+@inject RefreshDataService RefreshData
+
+@implements IDisposable
+
+<div class="content-wrapper">
+    <h3>Leaderboard</h3>
+
+    <div class="gradient-divider"></div>
+       
+
+    @if (leaderboard is null)
+    {
+        <p>Loading leaders...</p>
+    }
+    else if (!leaderboard.Any())
+    {
+        <p>There are no leaders</p>
+        <p>You could be first...</p>
+    }
+    else
+    {
+        <div>
+            <QuickGrid class="table" Items="@leaderboard.AsQueryable()" Pagination="@pagination">
+                <TemplateColumn Title="Field" Class="view-field-column" Align="Align.Center">
+                    <a class="emoji-cell">
+                        @{
+                            var index = GetGridIndex(context);
+                            if (index == 0)
+                            {
+                                <span class="trophy gold">🥇</span>
+                            }
+                            else if (index == 1)
+                            {
+                                <span class="trophy silver">🥈</span>
+                            }
+                            else if (index == 2)
+                            {
+                                <span class="trophy bronze">🥉</span>
+                            }
+                            else
+                            {
+                                <span class="position">@(index + 1)</span>
+                            }
+                        }
+                    </a>
+                </TemplateColumn>
+
+                <PropertyColumn Title="Login"
+                    Property="@(s => s.Login)"
+                    Align="Align.Center" />
+
+                <PropertyColumn Title="Ratio"
+                                Property="@(s => s.WinRatio.ToString("F2"))"
+                    Align="Align.Center" />
+            </QuickGrid>
+            <Paginator State="@pagination" />
+        </div>
+    }
+
+    <ErrorMessageComponent @bind-ErrorMessage="errorMessage" />
+</div>
+
+@code {
+    private IEnumerable<WinRatioResponse>? leaderboard;
+    private string? errorMessage;
+    private PaginationState pagination = new PaginationState { ItemsPerPage = 10 };
+    private int limit = 10;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await LocalStorage.ContainKeyAsync("accessToken"))
+        {
+            Navigation.NavigateTo("/");
+            return;
+        }
+
+        try
+        {
+            await GetLeaderboard();
+            RefreshData.OnRefreshDataAsync += GetLeaderboard;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+
+    private async Task GetLeaderboard()
+    {
+        leaderboard = await Http.GetFromJsonAsync<IEnumerable<WinRatioResponse>>($"/user/leaderboard?limit={limit}");
+        if (leaderboard is not null)
+        {
+            int count = leaderboard.Count();
+            pagination.ItemsPerPage = count < pagination.ItemsPerPage ? count : pagination.ItemsPerPage;
+        }
+    }
+
+
+    public void Dispose()
+    {
+        RefreshData.OnRefreshDataAsync -= GetLeaderboard;
+    }
+
+    private int GetGridIndex(WinRatioResponse item)
+    {
+        if (leaderboard is null) return -1;
+
+        return leaderboard.ToList().IndexOf(item);
+    }
+}

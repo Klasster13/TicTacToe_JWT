@@ -6,5 +6,6 @@ public enum GameTab
     MyGames,
     Game,
     JoinGame,
-    EditProfile
+    EditProfile,
+    Leaderboard
 }

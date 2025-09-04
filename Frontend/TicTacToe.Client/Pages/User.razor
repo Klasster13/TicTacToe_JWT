@@ -107,13 +107,14 @@
 
     private async Task SwitchTabHandler(GameTab tab)
     {
-        if (currentTab == tab)
-        {
-            if (currentTab == GameTab.JoinGame || currentTab == GameTab.MyGames)
+        if (currentTab == tab && 
+                (currentTab == GameTab.JoinGame ||
+                currentTab == GameTab.MyGames ||
+                currentTab ==GameTab.Leaderboard))
             {
                 await RefreshData.RefreshDataAsync();
             }
-        }
+        
 
         currentTab = tab;
         StateHasChanged();
