@@ -16,7 +16,11 @@ builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddScoped<AuthHeaderHandler>();
 builder.Services.AddScoped<UserDataUpdateService>();
 builder.Services.AddScoped<RefreshDataService>();
-builder.Services.AddScoped<GameHubService>(provider => new GameHubService(apiUrl));
+builder.Services.AddScoped<GameHubService>(provider =>
+{
+    var storageService = provider.GetRequiredService<ILocalStorageService>();
+    return new GameHubService(apiUrl, storageService);
+});
 
 builder.Services.AddHttpClient("HttpClient", client =>
 {

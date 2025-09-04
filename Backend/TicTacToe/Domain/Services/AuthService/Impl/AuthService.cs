@@ -51,7 +51,7 @@ public class AuthService(
         var claims = _jwtService.GetClaims(refreshToken);
         var userIdString = claims.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        if (!string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+        if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
         {
             throw new InvalidOperationException("Claims is invalid.");
         }
@@ -77,7 +77,7 @@ public class AuthService(
         var claims = _jwtService.GetClaims(refreshToken);
         var userIdString = claims.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        if (!string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+        if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
         {
             throw new InvalidOperationException("Claims is invalid.");
         }

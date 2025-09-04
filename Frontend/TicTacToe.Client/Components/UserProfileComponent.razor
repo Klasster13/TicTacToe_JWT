@@ -1,9 +1,6 @@
 ﻿@using TicTacToe.Client.Handlers
 
 @inject HttpClient Http
-@inject UserDataUpdateService UserUpdate
-
-@implements IDisposable
 
 <div class="profile-card">
     <div class="profile-avatar">
@@ -51,17 +48,6 @@
 
     protected override void OnInitialized()
     {
-        UserUpdate.OnUserUpdate += UpdateData;        
-    }    
-
-    private void UpdateData(UserResponse user)
-    {
-        User = user;
-        StateHasChanged();
-    }
-
-    public void Dispose()
-    {
-        UserUpdate.OnUserUpdate -= UpdateData;
-    }
+              
+    }        
 }

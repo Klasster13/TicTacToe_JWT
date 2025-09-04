@@ -1,13 +1,15 @@
-﻿using Microsoft.AspNetCore.SignalR.Client;
+﻿using Blazored.LocalStorage;
+using Microsoft.AspNetCore.SignalR.Client;
 using TicTacToe.Client.Models.Responses;
 
 namespace TicTacToe.Client.Handlers;
 
-public class GameHubService(string apiUrl) : IAsyncDisposable
+public class GameHubService(string apiUrl, ILocalStorageService storageService) : IAsyncDisposable
 {
     private HubConnection? hubConnection;
     private readonly string apiUrl = apiUrl;
     private bool _disposed;
+    private readonly ILocalStorageService _storageService = storageService;
 
     public Guid SessionId { get; private set; }
     public bool IsConnected { get; private set; } = false;
@@ -21,7 +23,12 @@ public class GameHubService(string apiUrl) : IAsyncDisposable
         try
         {
             hubConnection = new HubConnectionBuilder()
-            .WithUrl($"{apiUrl}game/gameHub")
+            .WithUrl($"{apiUrl}game/gameHub", options =>
+            {
+                options.AccessTokenProvider =
+                    async () => await _storageService.GetItemAsync<string>("accessToken")
+                    ?? throw new InvalidOperationException("Can't find access token.");
+            })
             .WithAutomaticReconnect()
             .Build();
 

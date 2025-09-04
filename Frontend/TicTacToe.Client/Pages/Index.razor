@@ -43,20 +43,79 @@
                 );
 
                 if (response.IsSuccessStatusCode)
-                {                    
-                    Navigation.NavigateTo($"/user");
+                {   
+                    var jwtResponse = await response.Content.ReadFromJsonAsync<JwtResponse>();
+                    if (jwtResponse is not null)
+                    {
+                        await LocalStorage.SetItemAsync("accessToken", jwtResponse.AccessToken);
+                        await LocalStorage.SetItemAsync("refreshToken", jwtResponse.RefreshToken);
+                        Navigation.NavigateTo($"/user");
+                    } 
+                    else
+                    {
+                        await RemoveTokens();
+                    }
                 }
                 else
                 {
-                    await LocalStorage.RemoveItemAsync("accessToken");
-                    await LocalStorage.RemoveItemAsync("refreshToken");
+                    await RemoveTokens();
                 }
             }
             catch (Exception)
             {
-                await LocalStorage.RemoveItemAsync("accessToken");
-                await LocalStorage.RemoveItemAsync("refreshToken");
+                await RemoveTokens();
             }
         }
+        // try
+        // {
+        //     var isAccessTokenExist = await LocalStorage.ContainKeyAsync("accessToken");
+        //     var isRefreshTokenExist = await LocalStorage.ContainKeyAsync("refreshToken");
+
+        //     if (!isAccessTokenExist && !isRefreshTokenExist)
+        //     {
+        //         await RemoveTokens();
+        //         return;
+        //     }
+
+        //     if (!isAccessTokenExist && isRefreshTokenExist)
+        //     {
+        //         var refreshToken = await LocalStorage.GetItemAsync<string>("refreshToken");
+        //         if (string.IsNullOrEmpty(refreshToken))
+        //         {
+        //             throw new ArgumentNullException(nameof(refreshToken));
+        //         }
+
+        //         var response = await Http.PostAsJsonAsync("/auth/refresh-access", new RefreshJwtRequest { RefreshToken = refreshToken });
+        //         if (response is null || !response.IsSuccessStatusCode)
+        //         {
+        //             await RemoveTokens();
+        //             return;
+        //         }
+
+        //         var jwtResponse = await response.Content.ReadFromJsonAsync<JwtResponse>();
+        //         if (jwtResponse is null)
+        //         {
+        //             await RemoveTokens();
+        //             return;
+        //         }
+
+        //         await LocalStorage.SetItemAsync("accessToken", jwtResponse.AccessToken);
+        //         await LocalStorage.SetItemAsync("refreshToken", jwtResponse.RefreshToken);
+        //         Navigation.NavigateTo($"/user", forceLoad: true);
+        //         return;
+        //     }
+
+        //     Navigation.NavigateTo($"/user", forceLoad: true);
+        // }
+        // catch (Exception)
+        // {
+        //     await RemoveTokens();
+        // }
+    }
+
+    private async Task RemoveTokens()
+    {
+        await LocalStorage.RemoveItemAsync("accessToken");
+        await LocalStorage.RemoveItemAsync("refreshToken");
     }
 }

@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using System.Security.Claims;
 using TicTacToe.Domain.Services.GameService;
 using TicTacToe.Web.Mappers;
 using TicTacToe.Web.Models.Requests;
@@ -10,10 +11,10 @@ using TicTacToe.Web.SignalRHub;
 namespace TicTacToe.Web.Controllers.GameController.Impl;
 
 
+[Authorize]
 [ApiController]
 [Route("game")]
 [Produces("application/json")]
-[Authorize]
 public class GameController(ISessionService sessionService, IHubContext<GameHub> hub) : ControllerBase, IGameController
 {
     private readonly ISessionService _sessionService = sessionService;
@@ -81,12 +82,12 @@ public class GameController(ISessionService sessionService, IHubContext<GameHub>
     {
         try
         {
-            if (!HttpContext.Items.TryGetValue("UserId", out var userIdObj) || userIdObj is null)
-            {
-                return Unauthorized();
-            }
+            var userIdString = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            var userId = (Guid)userIdObj;
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+            {
+                return BadRequest("Provided user data is invalid.");
+            }
 
             var newSession = request.ToDomainModel(userId);
             var createdSession = await _sessionService.CreateSession(newSession);
@@ -146,11 +147,13 @@ public class GameController(ISessionService sessionService, IHubContext<GameHub>
                 return BadRequest("Bad id");
             }
 
-            if (!HttpContext.Items.TryGetValue("UserId", out var userIdObj) || userIdObj is null)
+            var userIdString = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
             {
-                return Unauthorized();
+                return BadRequest("Provided user data is invalid.");
             }
-            var userId = (Guid)userIdObj;
+
             var newField = request.ToDomainModel();
 
             var validSession = await _sessionService.ValidateMove(userId, sessionId, newField);
@@ -217,14 +220,15 @@ public class GameController(ISessionService sessionService, IHubContext<GameHub>
     {
         try
         {
-            if (!HttpContext.Items.TryGetValue("UserId", out var userIdObj) || userIdObj is null)
-            {
-                return Unauthorized();
-            }
-            var userId = (Guid)userIdObj;
-
             var session = await _sessionService.GetSession(sessionId)
                 ?? throw new KeyNotFoundException($"Session {sessionId} not found");
+
+            var userIdString = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+            {
+                return BadRequest("Provided data is invalid.");
+            }
 
             if (session.CreatorId != userId)
             {
@@ -276,11 +280,12 @@ public class GameController(ISessionService sessionService, IHubContext<GameHub>
     {
         try
         {
-            if (!HttpContext.Items.TryGetValue("UserId", out var userIdObj) || userIdObj is null)
+            var userIdString = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
             {
-                return Unauthorized();
+                return BadRequest("Provided data is invalid.");
             }
-            var userId = (Guid)userIdObj;
 
             var session = await _sessionService.AddPlayerToSession(sessionId, userId);
 
@@ -331,11 +336,12 @@ public class GameController(ISessionService sessionService, IHubContext<GameHub>
     {
         try
         {
-            if (!HttpContext.Items.TryGetValue("UserId", out var userIdObj) || userIdObj is null)
+            var userIdString = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
             {
-                return Unauthorized();
+                return BadRequest("Provided data is invalid.");
             }
-            var userId = (Guid)userIdObj;
 
             var sessions = await _sessionService.GetAvailableSessions(userId);
             return Ok(sessions.Select(s => s.ToWebModel()));
@@ -367,12 +373,12 @@ public class GameController(ISessionService sessionService, IHubContext<GameHub>
     {
         try
         {
-            if (!HttpContext.Items.TryGetValue("UserId", out var userIdObj) || userIdObj is null)
-            {
-                return Unauthorized();
-            }
+            var userIdString = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            var userId = (Guid)userIdObj;
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+            {
+                return BadRequest("Provided data is invalid.");
+            }
 
             var sessions = await _sessionService.GetUserSessions(userId);
             return Ok(sessions.Select(s => s.ToWebModel()));
@@ -415,11 +421,12 @@ public class GameController(ISessionService sessionService, IHubContext<GameHub>
     {
         try
         {
-            if (!HttpContext.Items.TryGetValue("UserId", out var userIdObj) || userIdObj is null)
+            var userIdString = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
             {
-                return Unauthorized();
+                return BadRequest("Provided data is invalid.");
             }
-            var userId = (Guid)userIdObj;
 
             var updatedSession = await _sessionService.UpdateSessionMode(sessionId, userId, request.Mode);
 
@@ -465,11 +472,12 @@ public class GameController(ISessionService sessionService, IHubContext<GameHub>
     {
         try
         {
-            if (!HttpContext.Items.TryGetValue("UserId", out var userIdObj) || userIdObj is null)
+            var userIdString = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
             {
-                return Unauthorized();
+                return BadRequest("Provided data is invalid.");
             }
-            var userId = (Guid)userIdObj;
 
             var resetedSession = await _sessionService.ResetSession(sessionId, userId);
 

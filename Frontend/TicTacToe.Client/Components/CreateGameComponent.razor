@@ -68,7 +68,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        if (!await LocalStorage.ContainKeyAsync("authToken"))
+        if (!await LocalStorage.ContainKeyAsync("accessToken"))
         {
             Navigation.NavigateTo("/");
         }

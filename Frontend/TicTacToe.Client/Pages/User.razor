@@ -6,6 +6,9 @@
 @inject NavigationManager Navigation
 @inject RefreshDataService RefreshData
 @inject HttpClient Http
+@inject UserDataUpdateService UserUpdate
+
+@implements IDisposable
 
 
 <div class="top-bar">    
@@ -38,6 +41,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        UserUpdate.OnUserUpdate += UpdateData;
         try
         {
             var isAccessTokenExist = await LocalStorage.ContainKeyAsync("accessToken");
@@ -113,5 +117,16 @@
 
         currentTab = tab;
         StateHasChanged();
+    }
+
+    private void UpdateData(UserResponse user)
+    {
+        this.user = user;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        UserUpdate.OnUserUpdate -= UpdateData;
     }
 }

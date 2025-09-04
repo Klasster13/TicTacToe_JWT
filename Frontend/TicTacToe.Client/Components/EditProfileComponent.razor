@@ -124,46 +124,26 @@
                 return;
             }
 
-            var token = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{user.Login}:{currentPassword}"));
-                        
-            Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", token);
-            var response = await Http.GetAsync("/auth/authorization");
-
+            var request = new UpdateUserRequest
+                {
+                    Login = newLogin,
+                    Password = newPassword
+                };
+            var response = await Http.PutAsJsonAsync("/user/update", request);
             if (response.IsSuccessStatusCode)
             {
-                var request = new UpdateUserRequest
-                    {
-                        Login = newLogin,
-                        Password = newPassword
-                    };
-                response = await Http.PutAsJsonAsync("/user/update", request);
-                if (response.IsSuccessStatusCode)
-                {
-                    var updatedUser = await response.Content.ReadFromJsonAsync<UserResponse>();
-                    if (updatedUser is not null)
-                    {
-                        token = Convert.ToBase64String(
-                            Encoding.UTF8.GetBytes(
-                                $"{updatedUser.Login}:{(newPassword == string.Empty ? currentPassword: newPassword)}"
-                            )
-                        );
-
-                        await LocalStorage.RemoveItemAsync("authToken");
-                        await LocalStorage.SetItemAsync("authToken", token);
-                        UserUpdate.UserDataChanged(updatedUser);
-                    }
-                }
-                else
-                {
-                    errorMessage = await response.Content.ReadAsStringAsync();                    
+                var updatedUser = await response.Content.ReadFromJsonAsync<UserResponse>();
+                if (updatedUser is not null)
+                {                        
+                    UserUpdate.UserDataChanged(updatedUser);
                 }
             }
             else
             {
-                errorMessage = await response.Content.ReadAsStringAsync();
+                errorMessage = await response.Content.ReadAsStringAsync();                    
             }
-
-        }catch (Exception ex)
+        }
+        catch (Exception ex)
         {
             errorMessage = ex.Message;
         }

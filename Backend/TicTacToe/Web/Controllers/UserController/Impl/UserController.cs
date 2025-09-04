@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using TicTacToe.Domain.Services.UserService;
 using TicTacToe.Web.Mappers;
 using TicTacToe.Web.Models.Requests;
@@ -7,10 +8,10 @@ using TicTacToe.Web.Models.Responses;
 
 namespace TicTacToe.Web.Controllers.UserController.Impl;
 
+[Authorize]
 [ApiController]
 [Route("user")]
 [Produces("application/json")]
-[Authorize]
 public class UserController(IUserService userService) : ControllerBase, IUserController
 {
     private readonly IUserService _userService = userService;
@@ -86,11 +87,12 @@ public class UserController(IUserService userService) : ControllerBase, IUserCon
     {
         try
         {
-            if (!HttpContext.Items.TryGetValue("UserId", out var userIdObj) || userIdObj is null)
+            var userIdString = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
             {
-                return Unauthorized();
+                return BadRequest("Provided data is invalid.");
             }
-            var userId = (Guid)userIdObj;
 
             if ((request.Login is null || request.Login.Length < 3)
                 && (request.Password is null || request.Password.Length < 6))
@@ -135,6 +137,11 @@ public class UserController(IUserService userService) : ControllerBase, IUserCon
     /// <responce code="401">Unauthorized</responce>
     /// <responce code="404">Session was not found</responce>
     /// <responce code="500">Internal server error</responce>
+    [ProducesResponseType(typeof(UserResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     [HttpGet("current")]
     public async Task<ActionResult<UserResponse>> GetCurrentUser()
     {
