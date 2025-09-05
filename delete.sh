@@ -7,7 +7,7 @@ docker rm game_db
 docker rm game_backend
 docker rm game_frontend
 docker rmi postgres
-docker rmi tictactoewasm-game_frontend
-docker rmi tictactoewasm-game_backend
-docker volume rm tictactoewasm_game_data
-docker network rm tictactoewasm_default
+docker rmi src-game_frontend
+docker rmi src-game_backend
+docker volume rm src_game_data
+docker network rm src_default

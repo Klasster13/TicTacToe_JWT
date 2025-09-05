@@ -4,7 +4,7 @@
 @using System.Net.Http.Headers
 
 @inject HttpClient Http
-@inject ILocalStorageService LocalStorage
+@inject ITokenStorageService TokenStorageService
 @inject NavigationManager Navigation
 
 <div class="content-wrapper">
@@ -27,8 +27,8 @@
 
     <button class="main-btn"
             @onclick="@(IsSignIn ? SignInHandler : SignUpHandler)"
-    disabled="@(!IsValid)"
-    style="margin-top: 10px;">
+            disabled="@(!IsValid)"
+            style="margin-top: 10px;">
         @(IsSignIn ? "Sign In" : "Sign Un")
     </button>
         
@@ -62,8 +62,7 @@
 
                 if (jwtResponse is not null)
                 {
-                    await LocalStorage.SetItemAsync("accessToken", jwtResponse.AccessToken);
-                    await LocalStorage.SetItemAsync("refreshToken", jwtResponse.RefreshToken);
+                    await TokenStorageService.SetTokensAsync(jwtResponse.AccessToken, jwtResponse.RefreshToken);
                     Navigation.NavigateTo($"/user");                    
                 } else
                 {

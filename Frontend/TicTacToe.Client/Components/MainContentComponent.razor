@@ -1,13 +1,18 @@
-﻿@using TicTacToe.Client.Handlers
+﻿@using TicTacToe.Client.Services
 
 <div class="main-menu">
-    @if (CurrentTab == GameTab.CreateGame)
+
+    @if (User == null)
+    {
+        <p>Loading games...</p>
+    }
+    else if (CurrentTab == GameTab.CreateGame)
     {
         <CreateGameComponent OnGameReady="ShowGameHandler" />
     }
     else if (CurrentTab == GameTab.MyGames)
     {
-        <MyGamesComponent OnGameReady="ShowGameHandler" UserId="@UserId" />
+        <MyGamesComponent OnGameReady="ShowGameHandler" UserId="@User.Id" />
     }
     else if (CurrentTab == GameTab.JoinGame)
     {
@@ -15,24 +20,24 @@
     }
     else if (CurrentTab == GameTab.EditProfile)
     {
-        <EditProfileComponent UserId="@UserId" />
-    }
-    else if (CurrentTab == GameTab.Game)
-    {
-        <GameComponent 
-            Session="@session"
-            UserId="@UserId"
-            OnBackClick="BackHandler" />
+        <EditProfileComponent UserId="@User.Id" />
     }
     else if (CurrentTab == GameTab.Leaderboard)
     {
         <LeaderboardComponent />
     }
+    else if (CurrentTab == GameTab.Game)
+    {
+        <GameComponent 
+            Session="@session"
+            UserId="@User.Id"
+            OnBackClick="BackHandler" />
+    }
 </div>
 
 @code {
     [Parameter] public GameTab CurrentTab { get; set; }
-    [Parameter] public Guid UserId { get; set; }
+    [Parameter] public UserResponse? User { get; set; }
     [Parameter] public EventCallback<GameTab> OnTabChange { get; set; }
 
     private SessionResponse? session;

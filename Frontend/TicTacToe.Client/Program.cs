@@ -2,7 +2,10 @@ using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using TicTacToe.Client;
-using TicTacToe.Client.Handlers;
+using TicTacToe.Client.Services;
+using TicTacToe.Client.Services.GameHubService;
+using TicTacToe.Client.Services.TokenStorageService;
+using TicTacToe.Client.Services.TokenStorageService.Impl;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
@@ -14,9 +17,10 @@ builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddScoped<AuthHeaderHandler>();
 builder.Services.AddScoped<UserDataUpdateService>();
 builder.Services.AddScoped<RefreshDataService>();
+builder.Services.AddScoped<ITokenStorageService, TokenStorageService>();
 builder.Services.AddScoped<GameHubService>(provider =>
 {
-    var storageService = provider.GetRequiredService<ILocalStorageService>();
+    var storageService = provider.GetRequiredService<ITokenStorageService>();
     return new GameHubService(apiUrl, storageService);
 });
 

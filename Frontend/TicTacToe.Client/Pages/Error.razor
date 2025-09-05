@@ -1,0 +1,23 @@
+﻿@page "/error"
+
+@inject NavigationManager Navigation
+
+<PageTitle>Error</PageTitle>
+
+<div class="content-wrapper">
+    <div class="content-wrapper" style="margin-top:20px;">
+        <h3>Oops, some error occured...</h3>
+    </div>
+
+    <button class="main-btn"
+            @onclick="@BackHandler">
+        Back
+    </button>
+</div>
+
+@code {
+    private void BackHandler()
+    {
+        Navigation.NavigateTo($"/");
+    }
+}

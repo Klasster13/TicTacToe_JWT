@@ -1,9 +1,9 @@
 ﻿@using Microsoft.AspNetCore.Components.QuickGrid
-@using TicTacToe.Client.Handlers
+@using TicTacToe.Client.Services
 @using TicTacToe.Client.Models
 
 @inject HttpClient Http
-@inject ILocalStorageService LocalStorage
+@inject ITokenStorageService TokenStorageService
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
 @inject RefreshDataService RefreshData
@@ -122,7 +122,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        if (!await LocalStorage.ContainKeyAsync("accessToken"))
+        if (!await TokenStorageService.IsContainAccessTokenAsync())
         {
             Navigation.NavigateTo("/");
             return;

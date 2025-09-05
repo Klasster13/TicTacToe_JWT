@@ -1,9 +1,10 @@
 ﻿@page "/"
+
 @rendermode RenderMode.InteractiveWebAssembly
 
 @inject HttpClient Http
-@inject ILocalStorageService LocalStorage
 @inject NavigationManager Navigation
+@inject ITokenStorageService TokenStorageService
 
 
 <PageTitle>Tic-Tac-Toe</PageTitle>
@@ -32,7 +33,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var refreshToken = await LocalStorage.GetItemAsync<string>("refreshToken");
+        var refreshToken = await TokenStorageService.GetRefreshTokenAsync();
 
         if (!string.IsNullOrEmpty(refreshToken))
         {
@@ -47,75 +48,23 @@
                     var jwtResponse = await response.Content.ReadFromJsonAsync<JwtResponse>();
                     if (jwtResponse is not null)
                     {
-                        await LocalStorage.SetItemAsync("accessToken", jwtResponse.AccessToken);
-                        await LocalStorage.SetItemAsync("refreshToken", jwtResponse.RefreshToken);
+                        await TokenStorageService.SetTokensAsync(jwtResponse.AccessToken, jwtResponse.RefreshToken);
                         Navigation.NavigateTo($"/user");
                     } 
                     else
                     {
-                        await RemoveTokens();
+                        await TokenStorageService.ClearTokensAsync();
                     }
                 }
                 else
                 {
-                    await RemoveTokens();
+                    await TokenStorageService.ClearTokensAsync();
                 }
             }
             catch (Exception)
             {
-                await RemoveTokens();
+                await TokenStorageService.ClearTokensAsync();
             }
-        }
-        // try
-        // {
-        //     var isAccessTokenExist = await LocalStorage.ContainKeyAsync("accessToken");
-        //     var isRefreshTokenExist = await LocalStorage.ContainKeyAsync("refreshToken");
-
-        //     if (!isAccessTokenExist && !isRefreshTokenExist)
-        //     {
-        //         await RemoveTokens();
-        //         return;
-        //     }
-
-        //     if (!isAccessTokenExist && isRefreshTokenExist)
-        //     {
-        //         var refreshToken = await LocalStorage.GetItemAsync<string>("refreshToken");
-        //         if (string.IsNullOrEmpty(refreshToken))
-        //         {
-        //             throw new ArgumentNullException(nameof(refreshToken));
-        //         }
-
-        //         var response = await Http.PostAsJsonAsync("/auth/refresh-access", new RefreshJwtRequest { RefreshToken = refreshToken });
-        //         if (response is null || !response.IsSuccessStatusCode)
-        //         {
-        //             await RemoveTokens();
-        //             return;
-        //         }
-
-        //         var jwtResponse = await response.Content.ReadFromJsonAsync<JwtResponse>();
-        //         if (jwtResponse is null)
-        //         {
-        //             await RemoveTokens();
-        //             return;
-        //         }
-
-        //         await LocalStorage.SetItemAsync("accessToken", jwtResponse.AccessToken);
-        //         await LocalStorage.SetItemAsync("refreshToken", jwtResponse.RefreshToken);
-        //         Navigation.NavigateTo($"/user", forceLoad: true);
-        //         return;
-        //     }
-
-        //     Navigation.NavigateTo($"/user", forceLoad: true);
-        // }
-        // catch (Exception)
-        // {
-        //     await RemoveTokens();
-        // }
-    }
-
-    private async Task RemoveTokens()
-    {
-        await LocalStorage.RemoveItemAsync("accessToken");
-        await LocalStorage.RemoveItemAsync("refreshToken");
+        }        
     }
 }

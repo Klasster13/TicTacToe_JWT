@@ -1,12 +1,12 @@
 ﻿@page "/user"
 
-@using TicTacToe.Client.Handlers
+@using TicTacToe.Client.Services
 
-@inject ILocalStorageService LocalStorage
 @inject NavigationManager Navigation
 @inject RefreshDataService RefreshData
 @inject HttpClient Http
 @inject UserDataUpdateService UserUpdate
+@inject ITokenStorageService TokenStorageService
 
 @implements IDisposable
 
@@ -26,7 +26,7 @@
     <div class="main-content">        
         <div class="game-content">
             <MainContentComponent
-                UserId="@user.Id"
+                User="@user"
                 CurrentTab="@currentTab"
                 OnTabChange="SwitchTabHandler"/>
         </div>
@@ -37,15 +37,15 @@
 
 @code {
     private GameTab currentTab = GameTab.CreateGame;
-    private UserResponse user = null!;
+    private UserResponse? user;
 
     protected override async Task OnInitializedAsync()
     {
         UserUpdate.OnUserUpdate += UpdateData;
         try
         {
-            var isAccessTokenExist = await LocalStorage.ContainKeyAsync("accessToken");
-            var isRefreshTokenExist = await LocalStorage.ContainKeyAsync("refreshToken");
+            var isAccessTokenExist = await TokenStorageService.IsContainAccessTokenAsync();
+            var isRefreshTokenExist = await TokenStorageService.IsContainRefreshTokenAsync();
 
             if (!isAccessTokenExist && !isRefreshTokenExist)
             {
@@ -55,7 +55,7 @@
 
             if (!isAccessTokenExist && isRefreshTokenExist)
             {
-                var refreshToken = await LocalStorage.GetItemAsync<string>("refreshToken");
+                var refreshToken = await TokenStorageService.GetRefreshTokenAsync();
                 if (string.IsNullOrEmpty(refreshToken))
                 {
                     throw new ArgumentNullException(nameof(refreshToken));
@@ -75,8 +75,7 @@
                     return;
                 }
 
-                await LocalStorage.SetItemAsync("accessToken", jwtResponse.AccessToken);
-                await LocalStorage.SetItemAsync("refreshToken", jwtResponse.RefreshToken);
+                await TokenStorageService.SetTokensAsync(jwtResponse.AccessToken, jwtResponse.RefreshToken);
                 await GetCurrentUser();
                 return;
             }
@@ -99,22 +98,22 @@
 
     private async Task LogOutHandler()
     {
-        await LocalStorage.RemoveItemAsync("accessToken");
-        await LocalStorage.RemoveItemAsync("refreshToken");
+        await TokenStorageService.ClearTokensAsync();
         Navigation.NavigateTo("/", forceLoad: true);
     }
 
 
     private async Task SwitchTabHandler(GameTab tab)
     {
-        if (currentTab == tab && 
-                (currentTab == GameTab.JoinGame ||
-                currentTab == GameTab.MyGames ||
-                currentTab ==GameTab.Leaderboard))
+        if (currentTab == tab)
+        {
+            if (currentTab == GameTab.JoinGame
+                || currentTab == GameTab.MyGames
+                || currentTab ==GameTab.Leaderboard)
             {
                 await RefreshData.RefreshDataAsync();
             }
-        
+        }
 
         currentTab = tab;
         StateHasChanged();
@@ -125,6 +124,7 @@
         this.user = user;
         StateHasChanged();
     }
+
 
     public void Dispose()
     {

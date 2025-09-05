@@ -1,5 +1,5 @@
 ﻿@inject HttpClient Http
-@inject ILocalStorageService LocalStorage
+@inject ITokenStorageService TokenStorageService
 @inject NavigationManager Navigation
 
 <div class="content-wrapper">
@@ -68,7 +68,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        if (!await LocalStorage.ContainKeyAsync("accessToken"))
+        if (!await TokenStorageService.IsContainAccessTokenAsync())
         {
             Navigation.NavigateTo("/");
         }

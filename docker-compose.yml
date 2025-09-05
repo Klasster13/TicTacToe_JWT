@@ -23,9 +23,17 @@ services:
   game_backend:
     build: Backend/
     container_name: game_backend
+    # env_file:
+    #   - .env
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENV:-Development}
       ConnectionStrings__DefaultConnection: "Host=game_db;Port=5432;Database=${DB_NAME:-game_db};Username=${DB_USER:-kristieh};Password=${DB_PASSWORD:-12345}"
+      Jwt__Issuer: ${JWT_ISSUER}
+      Jwt__Audience: ${JWT_AUDIENCE}
+      Jwt__AccessSecret: ${JWT_ACCESS_SECRET}
+      Jwt__RefreshSecret: ${JWT_REFRESH_SECRET}
+      Jwt__AccessExpirationMinutes: ${JWT_ACCESS_EXPIRATION_MINUTES}
+      Jwt__RefreshExpirationDays: ${JWT_REFRESH_EXPIRATION_DAYS}
     depends_on:
       game_db:
         condition: service_healthy
@@ -41,6 +49,8 @@ services:
       container_name: game_frontend
       ports:
         - "7654:7654"
+      env_file:
+        - .env
       environment:
         ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENV:-Development}
       depends_on:
