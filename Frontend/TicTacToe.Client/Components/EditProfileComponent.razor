@@ -27,14 +27,14 @@
         <h5>Update password</h5>
         <span style="font-weight:400;">Must be 6-100 symbols</span>
 
-        <input type="text"
+        <input type="password"
                 style="margin-top: 10px;"
                 @bind="newPassword"
                 @bind:event="oninput"
                 placeholder="New password"
                 class="form-input" />
     
-        <input type="text"
+        <input type="password"
                 style="margin-top: 10px;"
                 @bind="confirmedPassword"
                 @bind:event="oninput"
@@ -44,7 +44,7 @@
         <div class="gradient-divider"></div>
         <h5>Enter current password</h5>
 
-        <input type="text"
+        <input type="password"
                 @bind="currentPassword"
                 @bind:event="oninput"
                 placeholder="Current password"
